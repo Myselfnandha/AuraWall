@@ -1,0 +1,12 @@
+[Unit]
+Description=awall - Free Automatic Wallpaper Engine Timer
+Documentation=https://github.com/user/awall
+PartOf=awall.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
