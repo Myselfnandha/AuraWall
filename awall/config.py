@@ -111,19 +111,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "city": "",
         "packs_dir": "~/Pictures/DynamicWallpapers",
     },
-    "widgets": {
-        "enabled": False,
-        "position": "center",  # "center", "top_center", "bottom_center", "top_left", "top_right", "bottom_left", "bottom_right"
-        "clock_format": "24h",  # "24h" or "12h"
-        "scale": 1.0,  # 0.5 to 2.0 font/widget scaling factor
-        "show_clock": True,
-        "show_weather": True,
-        "show_media": True,
-        "show_quote": False,
-        "backdrop": True,
-        "backdrop_opacity": 0.5,  # 0.0 (transparent) to 1.0 (solid)
-        "custom_font": "",  # Path to TTF font or empty for system font
-    },
     "wallpaper_backend": "auto",  # "auto", "feh", "swaybg", "hyprpaper", "nitrogen", "xfdesktop", "gsettings", "plasma", "swww", "xwallpaper"
 }
 

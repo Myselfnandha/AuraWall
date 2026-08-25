@@ -8,7 +8,6 @@
 
 - 🌐 **Multi-Source Support**: Fetches from Unsplash, Pexels, Pixabay, Reddit (e.g. `r/wallpapers`, `r/EarthPorn`, `r/spaceporn`), and local folders.
 - ☀️ **Dynamic Solar & Weather Engine**: macOS-style dynamic lighting! Computes sun elevation (Dawn, Sunrise, Noon, Golden Hour, Sunset, Night) and syncs live weather with Open-Meteo.
-- 🕒 **Desktop Overlay Widgets**: Composites high-contrast Digital Clock, Date, Live Weather Badge, Media Player track, and Daily Quotes onto wallpapers.
 - 🗔 **System Tray Integration**: Full desktop tray icon (`awall tray`) with quick source/category switching, next/prev, and favorites.
 - 🚀 **Desktop Autostart**: Easy XDG login autostart for system tray & engine (`awall autostart enable`).
 - 🔄 **Intelligent Fallback Chain**: Never fails to set a wallpaper — automatically falls back to secondary sources or cached images.
@@ -88,7 +87,6 @@ awall app install
 | Manage Background systemd Timer | `awall service [install\|uninstall\|status]` |
 | Favorite / Unfavorite Wallpaper | `awall fav` / `awall unfav` / `awall favorites` |
 | Check Solar Position & Weather | `awall weather` |
-| Desktop Overlay Widgets | `awall widgets [enable\|disable\|status]` |
 | Pause / Resume Rotation | `awall pause` / `awall resume` |
 | Engine Status & Info | `awall status` / `awall info` / `awall history` |
 

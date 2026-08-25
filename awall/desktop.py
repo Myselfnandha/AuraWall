@@ -54,7 +54,7 @@ def generate_desktop_entry_content() -> str:
 Type=Application
 Name=awall Wallpaper Engine
 GenericName=Wallpaper Engine
-Comment=Free Automatic Wallpaper Engine with multi-source fallback, dynamic lighting & widgets
+Comment=Free Automatic Wallpaper Engine with multi-source fallback and dynamic solar lighting
 Exec={exec_cmd}
 Icon=awall
 Terminal=false

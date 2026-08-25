@@ -1,6 +1,6 @@
 """
 Core daemon and wallpaper rotation orchestration for awall.
-Coordinates fetching, downloading, transitions, history logging, dynamic weather/solar synthesis, and widget overlays.
+Coordinates fetching, downloading, transitions, history logging, and dynamic weather/solar synthesis.
 """
 
 from __future__ import annotations
@@ -27,7 +27,6 @@ from awall.weather import (
     get_location,
     synthesize_dynamic_query,
 )
-from awall.widgets import composite_widgets
 
 
 def change_wallpaper(
@@ -137,13 +136,10 @@ def change_wallpaper(
         source_name = wallpaper_info.source_name
         url = wallpaper_info.url
 
-    # Composite active desktop widgets (clock, date, weather, music, quote) onto image
-    final_file = composite_widgets(downloaded_file, config)
-
     # Apply wallpaper with transition
     success = apply_transition(
         old_path=old_path,
-        new_path=final_file,
+        new_path=downloaded_file,
         transition_type=transition_type,
         duration_ms=duration_ms,
         setter_func=_setter_cb,

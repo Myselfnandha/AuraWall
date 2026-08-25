@@ -15,7 +15,6 @@ from awall.gui.dynamic_settings import DynamicSettingsPage
 from awall.gui.general_settings import GeneralSettingsPage
 from awall.gui.source_settings import SourceSettingsPage
 from awall.gui.topic_settings import TopicSettingsPage
-from awall.gui.widget_settings import WidgetSettingsPage
 from awall.history import HistoryManager
 
 
@@ -34,13 +33,11 @@ class MainWindow(Adw.PreferencesWindow):
         self.sources_page = SourceSettingsPage(self.config, self._on_config_changed)
         self.topics_page = TopicSettingsPage(self.config, self._on_config_changed)
         self.dynamic_page = DynamicSettingsPage(self.config, self._on_config_changed)
-        self.widgets_page = WidgetSettingsPage(self.config, self._on_config_changed)
         self.general_page = GeneralSettingsPage(self.config, self._on_config_changed)
 
         self.add(self.sources_page)
         self.add(self.topics_page)
         self.add(self.dynamic_page)
-        self.add(self.widgets_page)
         self.add(self.general_page)
 
     def _on_config_changed(self):

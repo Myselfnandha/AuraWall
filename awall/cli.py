@@ -17,7 +17,6 @@ from awall.daemon import change_wallpaper
 from awall.history import HistoryManager
 from awall.service import ServiceManager
 from awall.wallpaper_setter import detect_backend, set_wallpaper
-from awall.widgets import composite_widgets
 
 # ANSI styling
 BOLD = "\033[1m"
@@ -305,46 +304,6 @@ def cmd_weather(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_widgets(args: argparse.Namespace) -> int:
-    """Manages wallpaper overlay widgets."""
-    config = load_config()
-    action = getattr(args, "action", "status")
-    if action == "enable":
-        config["widgets"]["enabled"] = True
-        save_config(config)
-        print(f"{GREEN}✓ Desktop widgets ENABLED.{RESET}")
-        # Refresh current wallpaper with widgets
-        curr = HistoryManager().get_current()
-        if curr and curr.get("file_path"):
-            final_p = composite_widgets(curr["file_path"], config)
-            set_wallpaper(final_p, scaling=config.get("display", {}).get("scaling", "fill"))
-        return 0
-    elif action == "disable":
-        config["widgets"]["enabled"] = False
-        save_config(config)
-        print(f"{YELLOW}Desktop widgets DISABLED.{RESET}")
-        curr = HistoryManager().get_current()
-        if curr and curr.get("file_path"):
-            set_wallpaper(curr["file_path"], scaling=config.get("display", {}).get("scaling", "fill"))
-        return 0
-    elif action == "position":
-        pos = getattr(args, "pos", "center")
-        config["widgets"]["position"] = pos
-        save_config(config)
-        print(f"{GREEN}✓ Widget position set to: {pos}{RESET}")
-        return 0
-    else:
-        w_cfg = config.get("widgets", {})
-        print(f"\n{BOLD}Desktop Overlay Widgets Status:{RESET}")
-        print(f"  Widgets Enabled:   {'Yes ✓' if w_cfg.get('enabled') else 'No ✗'}")
-        print(f"  Position:          {w_cfg.get('position', 'center')}")
-        print(f"  Show Clock/Date:   {w_cfg.get('show_clock', True)}")
-        print(f"  Show Weather:      {w_cfg.get('show_weather', True)}")
-        print(f"  Show Media:        {w_cfg.get('show_media', True)}")
-        print(f"  Show Quote:        {w_cfg.get('show_quote', False)}\n")
-        return 0
-
-
 def cmd_service(args: argparse.Namespace) -> int:
     """Manages systemd user service and timer."""
     action = args.action.lower()
@@ -463,12 +422,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     # weather
     p_wtr = subparsers.add_parser("weather", help="Show current solar position, elevation, and live weather")
     p_wtr.set_defaults(func=cmd_weather)
-
-    # widgets
-    p_wdg = subparsers.add_parser("widgets", help="Manage desktop wallpaper overlay widgets")
-    p_wdg.add_argument("action", nargs="?", default="status", choices=["enable", "disable", "status", "position"], help="Widget action")
-    p_wdg.add_argument("--pos", choices=["center", "top_center", "bottom_center", "top_left", "top_right", "bottom_left", "bottom_right"], default="center", help="Position preset")
-    p_wdg.set_defaults(func=cmd_widgets)
 
     # service
     p_svc = subparsers.add_parser("service", help="Manage systemd user service & timer")
