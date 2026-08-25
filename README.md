@@ -8,6 +8,8 @@
 
 - 🌐 **Multi-Source Support**: Fetches from Unsplash, Pexels, Pixabay, Reddit (e.g. `r/wallpapers`, `r/EarthPorn`, `r/spaceporn`), and local folders.
 - ☀️ **Dynamic Solar & Weather Engine**: macOS-style dynamic lighting! Computes sun elevation (Dawn, Sunrise, Noon, Golden Hour, Sunset, Night) and syncs live weather with Open-Meteo.
+- 🖥 **Multi-Monitor Per-Display Support**: Display separate unique wallpapers on each connected monitor (eDP-1, HDMI-1, etc.) or mirror primary display.
+- 🔒 **Lock Screen Wallpaper Sync**: Automatically syncs desktop wallpaper to lock screen (XFCE, GNOME, KDE, i3lock, betterlockscreen, swaylock, hyprlock) with optional Gaussian Blur and Dim overlays.
 - 🗔 **System Tray Integration**: Full desktop tray icon (`awall tray`) with quick source/category switching, next/prev, and favorites.
 - ⚡ **Smart Power-Saving Focus Pause**: System-event triggered (0% CPU / 0 wakeups while working in apps). Automatically pauses rotation during application use and changes wallpaper immediately when returning to desktop if overdue.
 - 🚀 **Desktop Autostart**: Easy XDG login autostart for system tray & engine (`awall autostart enable`).
@@ -15,7 +17,7 @@
 - 🏷 **17 Curated Categories**: Nature, Architecture, Animals, Space, Technology, Dark Aesthetic, Minimalist, 3D Renders, Street Photography, and more.
 - 🎨 **Visual Transitions**: Smooth crossfade blending, horizontal sliding, or instant wallpaper swaps.
 - 🖥 **Universal Desktop Support**: Auto-detects XFCE, GNOME, KDE Plasma, Hyprland, Sway, feh, nitrogen, swww, and xwallpaper.
-- ⚙️ **Dual Interface**: Fast interactive terminal wizard (`awall config`) and modern GTK4/Libadwaita settings GUI (`awall gui`).
+- ⚙️ **GTK4 / Libadwaita Preferences**: Modern settings GUI (`awall gui`) for configuring schedules, multi-monitor, lockscreen, sources, and dynamic presets.
 - ★ **Favorites System**: Save wallpapers you love (`awall fav`) — favorites are protected from cache cleanup and prioritized offline.
 - 📡 **Offline Mode**: Automatically falls back to high-resolution cached wallpapers when disconnected from the internet.
 - ⏱ **Background Automation**: Native `systemd` user timer for reliable, zero-overhead background rotation.
@@ -83,6 +85,8 @@ awall app install
 | Launch Desktop System Tray | `awall tray` |
 | Rotate to Next Wallpaper | `awall next` |
 | Revert to Previous Wallpaper | `awall prev` |
+| Manage Lock Screen Wallpaper Sync | `awall lockscreen [sync\|status]` |
+| Inspect Connected Displays & Multi-Monitor | `awall monitors` |
 | Manage Desktop Startup Autostart | `awall autostart [enable\|disable\|status]` |
 | Manage Desktop App Menu & Icons | `awall app [install\|uninstall\|status]` |
 | Manage Background systemd Timer | `awall service [install\|uninstall\|status]` |
@@ -99,6 +103,22 @@ awall app install
 version: 1
 paused: false
 active_source: auto
+
+display:
+  scaling: fill  # fill, fit, stretch, center, tile
+  multi_monitor: per_monitor  # "unified" or "per_monitor"
+  monitor_config:
+    eDP-1:
+      mode: unique  # "unique" or "shared"
+    HDMI-1:
+      mode: unique
+  transition: fade  # fade, slide, instant
+  transition_duration_ms: 500
+  lock_screen:
+    enabled: true
+    effect: blur  # "none", "blur", "dim", "blur_dim"
+    blur_radius: 15
+    dim_opacity: 0.4
 
 sources:
   fallback_order:

@@ -136,19 +136,63 @@ def change_wallpaper(
         source_name = wallpaper_info.source_name
         url = wallpaper_info.url
 
-    # Apply wallpaper with transition
-    success = apply_transition(
-        old_path=old_path,
-        new_path=downloaded_file,
-        transition_type=transition_type,
-        duration_ms=duration_ms,
-        setter_func=_setter_cb,
-        scaling=scaling,
-    )
+    # Multi-monitor per-display or unified mode
+    multi_mon_mode = display_cfg.get("multi_monitor", "unified")
+    monitor_cfg = display_cfg.get("monitor_config", {})
+
+    if multi_mon_mode == "per_monitor":
+        from awall.monitor import get_monitors
+        from awall.wallpaper_setter import set_wallpaper_multi
+
+        monitors = get_monitors()
+        monitor_images: Dict[str, Path] = {}
+
+        for mon in monitors:
+            mode = monitor_cfg.get(mon.name, {}).get("mode", "unique")
+            if mon.is_primary or mode == "shared" or not monitor_images:
+                # Primary or shared with primary
+                monitor_images[mon.name] = downloaded_file
+            else:
+                # Unique wallpaper for this monitor: attempt fetching a secondary image
+                secondary_file: Optional[Path] = None
+                try:
+                    sec_info, _ = fetch_wallpaper_from_chain(config, topic_override=topic_query)
+                    if sec_info and sec_info.url:
+                        secondary_file = cache_mgr.download_image(
+                            sec_info.url, source_prefix=sec_info.source_name
+                        )
+                except Exception:
+                    pass
+                if not secondary_file:
+                    secondary_file = cache_mgr.get_offline_wallpaper(exclude_path=str(downloaded_file))
+                monitor_images[mon.name] = secondary_file or downloaded_file
+
+        success = set_wallpaper_multi(
+            images=monitor_images,
+            scaling=scaling,
+            backend_override=backend_override,
+        )
+    else:
+        # Apply unified wallpaper with transition
+        success = apply_transition(
+            old_path=old_path,
+            new_path=downloaded_file,
+            transition_type=transition_type,
+            duration_ms=duration_ms,
+            setter_func=_setter_cb,
+            scaling=scaling,
+        )
 
     if not success:
         print("[awall] Failed to apply wallpaper to desktop.")
         return False
+
+    # Sync Lock Screen Wallpaper
+    try:
+        from awall.lockscreen import sync_lock_screen
+        sync_lock_screen(image_path=downloaded_file, config=config)
+    except Exception as e:
+        print(f"[awall] Lock screen sync error: {e}")
 
     # Log to history
     history_mgr.add_entry(

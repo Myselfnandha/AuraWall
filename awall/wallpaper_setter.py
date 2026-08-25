@@ -64,8 +64,8 @@ class XfceBackend(WallpaperBackend):
             style_props = [p for p in props if p.endswith("image-style")]
 
             if monitor:
-                image_props = [p for p in image_props if monitor in p]
-                style_props = [p for p in style_props if monitor in p]
+                image_props = [p for p in image_props if monitor in p or f"monitor{monitor}" in p]
+                style_props = [p for p in style_props if monitor in p or f"monitor{monitor}" in p]
 
             abs_path = str(image_path.resolve())
 
@@ -143,7 +143,7 @@ class KdeBackend(WallpaperBackend):
 
     def set_wallpaper(self, image_path: Path, scaling: str = "fill", monitor: Optional[str] = None) -> bool:
         abs_path = str(image_path.resolve())
-        if shutil.which("plasma-apply-wallpaperimage"):
+        if shutil.which("plasma-apply-wallpaperimage") and not monitor:
             try:
                 subprocess.run(["plasma-apply-wallpaperimage", abs_path], check=True, timeout=5)
                 return True
@@ -156,9 +156,11 @@ class KdeBackend(WallpaperBackend):
             var Desktops = desktops();
             for (i=0; i<Desktops.length; i++) {{
                 d = Desktops[i];
-                d.wallpaperPlugin = "org.kde.image";
-                d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General");
-                d.writeConfig("Image", "file://{abs_path}");
+                if ('{monitor or ""}' === '' || d.screen === {monitor or 0}) {{
+                    d.wallpaperPlugin = "org.kde.image";
+                    d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General");
+                    d.writeConfig("Image", "file://{abs_path}");
+                }}
             }}
             """
             try:
@@ -285,8 +287,13 @@ class NitrogenBackend(WallpaperBackend):
             "tile": "--set-tiled",
         }
         flag = flag_map.get(scaling, "--set-zoom-fill")
+        cmd = ["nitrogen", flag, str(image_path.resolve()), "--save"]
+        if monitor:
+            # If monitor is an index number or named output
+            head_idx = monitor if monitor.isdigit() else "0"
+            cmd.insert(1, f"--head={head_idx}")
         try:
-            subprocess.run(["nitrogen", flag, str(image_path.resolve()), "--save"], check=True, timeout=5)
+            subprocess.run(cmd, check=True, timeout=5)
             return True
         except Exception as e:
             print(f"[awall] nitrogen failed: {e}")
@@ -310,8 +317,12 @@ class XwallpaperBackend(WallpaperBackend):
             "tile": "--tile",
         }
         flag = flag_map.get(scaling, "--zoom")
+        cmd = ["xwallpaper"]
+        if monitor:
+            cmd.extend(["--output", monitor])
+        cmd.extend([flag, str(image_path.resolve())])
         try:
-            subprocess.run(["xwallpaper", flag, str(image_path.resolve())], check=True, timeout=5)
+            subprocess.run(cmd, check=True, timeout=5)
             return True
         except Exception as e:
             print(f"[awall] xwallpaper failed: {e}")
@@ -372,3 +383,49 @@ def set_wallpaper(
         return False
 
     return backend.set_wallpaper(path, scaling=scaling, monitor=monitor)
+
+
+def set_wallpaper_multi(
+    images: Dict[str, str | Path],
+    scaling: str = "fill",
+    backend_override: Optional[str] = None,
+) -> bool:
+    """
+    Applies different wallpaper images to different monitors.
+    `images` is a mapping of {monitor_name: image_path}.
+    """
+    if not images:
+        return False
+
+    backend = detect_backend(backend_override)
+    if not backend:
+        print(f"[awall] Warning: No supported wallpaper backend detected for multi-monitor.")
+        return False
+
+    # Swaybg multi-output optimization
+    if backend.name == "swaybg":
+        mode_map = {"fill": "fill", "fit": "fit", "stretch": "stretch", "center": "center", "tile": "tile"}
+        mode = mode_map.get(scaling, "fill")
+        subprocess.run(["pkill", "-x", "swaybg"], check=False)
+        cmd = ["swaybg"]
+        for mon, img_p in images.items():
+            abs_p = str(Path(img_p).resolve())
+            cmd.extend(["-o", mon, "-i", abs_p, "-m", mode])
+        try:
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except Exception as e:
+            print(f"[awall] swaybg multi-monitor failed: {e}")
+            return False
+
+    # For XFCE, Swww, Hyprpaper, Nitrogen, Xwallpaper, Feh, etc.
+    all_ok = True
+    for mon_name, img_path in images.items():
+        path = Path(img_path).resolve()
+        if not path.exists():
+            continue
+        ok = backend.set_wallpaper(path, scaling=scaling, monitor=mon_name)
+        if not ok:
+            all_ok = False
+
+    return all_ok

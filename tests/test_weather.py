@@ -4,6 +4,7 @@ Tests for awall.weather
 
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from awall.weather import (
@@ -38,20 +39,23 @@ class TestWeather(unittest.TestCase):
 
     @patch("requests.get")
     def test_live_weather_mock(self, mock_get):
-        mock_res = MagicMock()
-        mock_res.status_code = 200
-        mock_res.json.return_value = {
-            "current": {
-                "temperature_2m": 25.4,
-                "weather_code": 0,
-                "is_day": 1,
-            }
-        }
-        mock_get.return_value = mock_res
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch("awall.weather.get_default_cache_dir", return_value=Path(tmp_dir)):
+                mock_res = MagicMock()
+                mock_res.status_code = 200
+                mock_res.json.return_value = {
+                    "current": {
+                        "temperature_2m": 25.4,
+                        "weather_code": 0,
+                        "is_day": 1,
+                    }
+                }
+                mock_get.return_value = mock_res
 
-        wtr = get_live_weather(28.6, 77.2)
-        self.assertEqual(wtr["temperature"], 25.4)
-        self.assertEqual(wtr["description"], "Clear Sky")
+                wtr = get_live_weather(28.6, 77.2)
+                self.assertEqual(wtr["temperature"], 25.4)
+                self.assertEqual(wtr["description"], "Clear Sky")
 
 
 if __name__ == "__main__":

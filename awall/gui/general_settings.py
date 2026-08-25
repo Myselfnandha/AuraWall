@@ -140,6 +140,130 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         trans_row.connect("notify::selected", _on_trans_change)
         disp_group.add(trans_row)
 
+        # 3. Multi-Monitor Displays Group
+        from awall.monitor import get_monitors
+
+        mon_group = Adw.PreferencesGroup()
+        mon_group.set_title("Multi-Monitor Displays")
+        self.add(mon_group)
+
+        multi_mode_row = Adw.ComboRow()
+        multi_mode_row.set_title("Multi-Monitor Mode")
+        multi_mode_row.set_subtitle("Choose whether displays share one wallpaper or have unique wallpapers")
+        multi_model = Gtk.StringList()
+        multi_model.append("Unified (Same Wallpaper on All)")
+        multi_model.append("Per-Monitor (Unique Wallpapers)")
+        multi_mode_row.set_model(multi_model)
+
+        curr_multi = disp_cfg.get("multi_monitor", "unified")
+        multi_mode_row.set_selected(1 if curr_multi == "per_monitor" else 0)
+
+        def _on_multi_change(row, gparam):
+            disp_cfg["multi_monitor"] = "per_monitor" if row.get_selected() == 1 else "unified"
+            self.on_change()
+
+        multi_mode_row.connect("notify::selected", _on_multi_change)
+        mon_group.add(multi_mode_row)
+
+        # Dynamic per-monitor rows
+        detected_monitors = get_monitors()
+        mon_config_dict = disp_cfg.setdefault("monitor_config", {})
+
+        for mon in detected_monitors:
+            mon_row = Adw.ComboRow()
+            mon_title = f"Display: {mon.name}"
+            if mon.is_primary:
+                mon_title += " ★ Primary"
+            mon_row.set_title(mon_title)
+            mon_row.set_subtitle(f"Resolution: {mon.width}×{mon.height}")
+
+            per_mon_model = Gtk.StringList()
+            per_mon_model.append("Unique Wallpaper (Rotate Independently)")
+            per_mon_model.append("Shared (Mirror Primary Wallpaper)")
+            mon_row.set_model(per_mon_model)
+
+            cur_mode = mon_config_dict.get(mon.name, {}).get("mode", "unique")
+            mon_row.set_selected(1 if cur_mode == "shared" else 0)
+
+            def _make_mon_handler(m_name):
+                def _on_mon_mode_change(row, gparam):
+                    m_cfg = mon_config_dict.setdefault(m_name, {})
+                    m_cfg["mode"] = "shared" if row.get_selected() == 1 else "unique"
+                    self.on_change()
+                return _on_mon_mode_change
+
+            mon_row.connect("notify::selected", _make_mon_handler(mon.name))
+            mon_group.add(mon_row)
+
+        # 4. Lock Screen Synchronization Group
+        lock_cfg = disp_cfg.setdefault("lock_screen", {})
+        lock_group = Adw.PreferencesGroup()
+        lock_group.set_title("Lock Screen Synchronization")
+        self.add(lock_group)
+
+        lock_sync_row = Adw.SwitchRow()
+        lock_sync_row.set_title("Sync Wallpaper to Lock Screen")
+        lock_sync_row.set_subtitle("Automatically update lock screen background to match desktop wallpaper")
+        lock_sync_row.set_active(lock_cfg.get("enabled", True))
+
+        def _on_lock_sync_change(row, gparam):
+            lock_cfg["enabled"] = row.get_active()
+            self.on_change()
+
+        lock_sync_row.connect("notify::active", _on_lock_sync_change)
+        lock_group.add(lock_sync_row)
+
+        effect_row = Adw.ComboRow()
+        effect_row.set_title("Lock Screen Visual Effect")
+        effect_row.set_subtitle("Apply blur or dark dimming overlay for better lock dialog readability")
+        effect_model = Gtk.StringList()
+        effects = [
+            ("none", "None (Original Wallpaper)"),
+            ("blur", "Gaussian Blur"),
+            ("dim", "Dim Overlay (Darkened)"),
+            ("blur_dim", "Gaussian Blur + Dimming"),
+        ]
+        for _, eff_label in effects:
+            effect_model.append(eff_label)
+        effect_row.set_model(effect_model)
+
+        eff_keys = [k for k, _ in effects]
+        cur_eff = lock_cfg.get("effect", "none")
+        effect_row.set_selected(eff_keys.index(cur_eff) if cur_eff in eff_keys else 0)
+
+        def _on_effect_change(row, gparam):
+            sel = row.get_selected()
+            if 0 <= sel < len(eff_keys):
+                lock_cfg["effect"] = eff_keys[sel]
+                self.on_change()
+
+        effect_row.connect("notify::selected", _on_effect_change)
+        lock_group.add(effect_row)
+
+        blur_spin = Adw.SpinRow.new_with_range(1, 30, 1)
+        blur_spin.set_title("Gaussian Blur Radius")
+        blur_spin.set_subtitle("Amount of background blur applied to lock screen (1–30)")
+        blur_spin.set_value(float(lock_cfg.get("blur_radius", 15)))
+
+        def _on_blur_change(row, gparam):
+            lock_cfg["blur_radius"] = int(row.get_value())
+            self.on_change()
+
+        blur_spin.connect("notify::value", _on_blur_change)
+        lock_group.add(blur_spin)
+
+        dim_spin = Adw.SpinRow.new_with_range(0.1, 0.9, 0.05)
+        dim_spin.set_title("Dimming Opacity")
+        dim_spin.set_subtitle("Darkness percentage of dim overlay (10%–90%)")
+        dim_spin.set_value(float(lock_cfg.get("dim_opacity", 0.4)))
+
+        def _on_dim_change(row, gparam):
+            lock_cfg["dim_opacity"] = round(float(row.get_value()), 2)
+            self.on_change()
+
+        dim_spin.connect("notify::value", _on_dim_change)
+        lock_group.add(dim_spin)
+
         # 3. Cache Group
         cache_cfg = self.config.setdefault("cache", {})
         cache_group = Adw.PreferencesGroup()

@@ -92,8 +92,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "display": {
         "scaling": "fill",  # "fill", "fit", "stretch", "center", "tile"
         "multi_monitor": "unified",  # "unified" or "per_monitor"
+        "monitor_config": {},  # e.g. {"eDP-1": {"mode": "unique"}, "HDMI-1": {"mode": "shared"}}
         "transition": "fade",  # "instant", "fade", "slide"
         "transition_duration_ms": 500,
+        "lock_screen": {
+            "enabled": True,
+            "effect": "none",  # "none", "blur", "dim"
+            "blur_radius": 15,  # 1 to 30
+            "dim_opacity": 0.4,  # 0.0 to 1.0
+        },
     },
     "cache": {
         "directory": "~/.cache/auto_wall",
@@ -130,6 +137,17 @@ def get_config_dir() -> Path:
 def get_config_path() -> Path:
     """Returns the absolute path to config.yaml."""
     return get_config_dir() / "config.yaml"
+
+
+def get_cache_dir() -> Path:
+    """Returns the cache directory path ($XDG_CACHE_HOME/auto_wall or ~/.cache/auto_wall)."""
+    xdg_cache = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache:
+        path = Path(xdg_cache) / "auto_wall"
+    else:
+        path = Path.home() / ".cache" / "auto_wall"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def get_default_config() -> Dict[str, Any]:

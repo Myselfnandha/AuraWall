@@ -378,6 +378,95 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_src.add_argument("source", help="Source identifier")
     p_src.set_defaults(func=cmd_set_source)
 
+def cmd_lockscreen(args) -> int:
+    from awall.config import load_config
+    from awall.history import HistoryManager
+    from awall.lockscreen import detect_lock_screen_backend, sync_lock_screen
+
+    config = load_config()
+    backend = detect_lock_screen_backend()
+
+    if args.action == "status":
+        lock_cfg = config.get("display", {}).get("lock_screen", {})
+        enabled = lock_cfg.get("enabled", True)
+        effect = lock_cfg.get("effect", "none")
+        print("🔒 Lock Screen Sync Status:")
+        print(f"  • Enabled:          {'Yes' if enabled else 'No'}")
+        print(f"  • Detected Backend: {backend}")
+        print(f"  • Visual Effect:    {effect}")
+        print(f"  • Blur Radius:      {lock_cfg.get('blur_radius', 15)}")
+        print(f"  • Dim Opacity:      {lock_cfg.get('dim_opacity', 0.4)}")
+        return 0
+
+    if args.action == "sync":
+        hist = HistoryManager()
+        curr = hist.get_current()
+        path = Path(curr["file_path"]) if curr and curr.get("file_path") else None
+        if not path or not path.exists():
+            from awall.cache import CacheManager
+            cache_mgr = CacheManager()
+            path = cache_mgr.get_offline_wallpaper()
+
+        if not path or not path.exists():
+            print("[awall] Error: No valid wallpaper found in cache or history to sync.")
+            return 1
+
+        print(f"[awall] Syncing wallpaper ({path.name}) to lock screen ({backend})...")
+        ok = sync_lock_screen(path, config=config)
+        if ok:
+            print("[awall] ✓ Lock screen wallpaper successfully updated!")
+            return 0
+        else:
+            print("[awall] ✗ Failed to sync lock screen wallpaper.")
+            return 1
+    return 0
+
+
+def cmd_monitors(args) -> int:
+    from awall.config import load_config
+    from awall.monitor import get_monitors
+
+    config = load_config()
+    disp_cfg = config.get("display", {})
+    multi_mode = disp_cfg.get("multi_monitor", "unified")
+    mon_cfgs = disp_cfg.get("monitor_config", {})
+
+    monitors = get_monitors()
+    print(f"🖥 Connected Displays ({len(monitors)}):")
+    print(f"  • Multi-Monitor Mode: {multi_mode.upper()}")
+    for m in monitors:
+        mode = mon_cfgs.get(m.name, {}).get("mode", "unique")
+        prim_str = " (★ Primary)" if m.is_primary else ""
+        print(f"  • {m.name}: {m.width}x{m.height}{prim_str} -> Mode: {mode}")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="awall",
+        description="🖼 awall — Modern Automatic Wallpaper Engine for Linux",
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
+
+    # next & prev
+    p_next = subparsers.add_parser("next", help="Rotate to next wallpaper")
+    p_next.add_argument("-t", "--topic", help="Specific topic to fetch")
+    p_next.add_argument("-s", "--source", choices=["unsplash", "pexels", "pixabay", "reddit", "local"], help="Force specific source")
+    p_next.set_defaults(func=cmd_next)
+
+    p_prev = subparsers.add_parser("prev", help="Revert to previous wallpaper in history")
+    p_prev.set_defaults(func=cmd_prev)
+
+    # favorites
+    p_fav = subparsers.add_parser("fav", aliases=["favorite"], help="Favorite current wallpaper")
+    p_fav.set_defaults(func=cmd_fav)
+
+    p_unfav = subparsers.add_parser("unfav", aliases=["unfavorite"], help="Unfavorite current wallpaper")
+    p_unfav.set_defaults(func=cmd_unfav)
+
+    p_favs = subparsers.add_parser("favorites", help="List all favorited wallpapers")
+    p_favs.set_defaults(func=cmd_favorites)
+
     # pause & resume
     p_pause = subparsers.add_parser("pause", help="Pause automatic rotation")
     p_pause.set_defaults(func=cmd_pause)
@@ -428,13 +517,28 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_svc.add_argument("action", choices=["install", "uninstall", "status"], help="Action to perform")
     p_svc.set_defaults(func=cmd_service)
 
+    # lockscreen
+    p_lock = subparsers.add_parser("lockscreen", help="Manage lock screen wallpaper synchronization")
+    p_lock.add_argument("action", nargs="?", default="status", choices=["sync", "status"], help="Lock screen action")
+    p_lock.set_defaults(func=cmd_lockscreen)
+
+    # monitors
+    p_mon = subparsers.add_parser("monitors", help="List connected display monitors and multi-monitor setup")
+    p_mon.set_defaults(func=cmd_monitors)
+
+    return parser
+
+
+def main(argv=None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if not args.command:
         # Default behavior: launch GUI settings desktop application directly
         from awall.gui.app import launch_gui
         return launch_gui()
 
-    return args.func(args)
+    res = args.func(args)
+    return res if isinstance(res, int) else 0
 
 
 if __name__ == "__main__":
