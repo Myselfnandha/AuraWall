@@ -63,15 +63,25 @@ class XfceBackend(WallpaperBackend):
             ]
             style_props = [p for p in props if p.endswith("image-style")]
 
-            if monitor:
-                image_props = [p for p in image_props if monitor in p or f"monitor{monitor}" in p]
-                style_props = [p for p in style_props if monitor in p or f"monitor{monitor}" in p]
+            if monitor and monitor.lower() != "default":
+                filtered_image = [
+                    p for p in image_props
+                    if monitor in p or f"monitor{monitor}" in p or monitor.replace("-", "") in p.replace("-", "")
+                ]
+                filtered_style = [
+                    p for p in style_props
+                    if monitor in p or f"monitor{monitor}" in p or monitor.replace("-", "") in p.replace("-", "")
+                ]
+                if filtered_image:
+                    image_props = filtered_image
+                if filtered_style:
+                    style_props = filtered_style
 
             abs_path = str(image_path.resolve())
 
             for prop in image_props:
                 subprocess.run(
-                    ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", abs_path],
+                    ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", abs_path, "--create", "-t", "string"],
                     check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -79,7 +89,16 @@ class XfceBackend(WallpaperBackend):
 
             for prop in style_props:
                 subprocess.run(
-                    ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", style_val],
+                    ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", style_val, "--create", "-t", "string"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+            # Trigger instant xfdesktop redraw
+            if shutil.which("xfdesktop"):
+                subprocess.run(
+                    ["xfdesktop", "--reload"],
                     check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,

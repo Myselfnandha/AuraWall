@@ -73,7 +73,66 @@ def get_monitors() -> List[MonitorInfo]:
         except Exception:
             pass
 
-    # 3. Try xrandr (X11)
+    # 3. Try Linux DRM sysfs (/sys/class/drm)
+    from pathlib import Path
+    drm_dir = Path("/sys/class/drm")
+    if drm_dir.exists():
+        try:
+            for p in sorted(drm_dir.glob("card*-*")):
+                st = p / "status"
+                if st.exists() and st.read_text().strip() == "connected":
+                    raw_name = p.name
+                    name = re.sub(r"^card\d+-", "", raw_name)
+                    modes_f = p / "modes"
+                    w, h = 1920, 1080
+                    if modes_f.exists() and modes_f.read_text().strip():
+                        top_mode = modes_f.read_text().splitlines()[0].strip()
+                        if "x" in top_mode:
+                            parts = top_mode.split("x")
+                            w, h = int(parts[0]), int(parts[1])
+                    monitors.append(
+                        MonitorInfo(
+                            name=name,
+                            width=w,
+                            height=h,
+                            is_primary=(len(monitors) == 0),
+                        )
+                    )
+            if monitors:
+                return monitors
+        except Exception:
+            pass
+
+    # 4. Try XFCE xfconf-query
+    if shutil.which("xfconf-query") and "XFCE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
+        try:
+            out = subprocess.check_output(
+                ["xfconf-query", "-c", "xfce4-desktop", "-l"],
+                stderr=subprocess.DEVNULL,
+                timeout=3,
+            ).decode()
+            xfce_mons = []
+            for line in out.splitlines():
+                m = re.search(r"/backdrop/screen\d+/monitor([^/]+)/", line)
+                if m:
+                    m_name = m.group(1)
+                    if m_name not in xfce_mons and m_name != "0":
+                        xfce_mons.append(m_name)
+            for idx, m_name in enumerate(xfce_mons):
+                monitors.append(
+                    MonitorInfo(
+                        name=m_name,
+                        width=1920,
+                        height=1080,
+                        is_primary=(idx == 0),
+                    )
+                )
+            if monitors:
+                return monitors
+        except Exception:
+            pass
+
+    # 5. Try xrandr (X11)
     if shutil.which("xrandr"):
         try:
             output = subprocess.check_output(["xrandr", "--query"], timeout=3).decode("utf-8")
@@ -99,7 +158,7 @@ def get_monitors() -> List[MonitorInfo]:
         except Exception:
             pass
 
-    # 4. Try Gdk / PyGObject if available
+    # 6. Try Gdk / PyGObject if available
     try:
         import gi
         gi.require_version("Gdk", "4.0")
@@ -123,5 +182,5 @@ def get_monitors() -> List[MonitorInfo]:
     except Exception:
         pass
 
-    # 5. Default single monitor fallback
+    # 7. Default single monitor fallback
     return [MonitorInfo(name="Default", width=1920, height=1080, is_primary=True)]

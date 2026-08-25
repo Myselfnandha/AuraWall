@@ -44,11 +44,12 @@ class TestMultiMonitor(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(mock_backend.set_wallpaper.call_count, 2)
 
+    @patch("awall.daemon.save_config")
     @patch("awall.monitor.get_monitors")
     @patch("awall.wallpaper_setter.set_wallpaper_multi", return_value=True)
     @patch("awall.lockscreen.sync_lock_screen")
     @patch("awall.daemon.fetch_wallpaper_from_chain")
-    def test_daemon_per_monitor_rotation(self, mock_fetch, mock_sync, mock_multi, mock_monitors):
+    def test_daemon_per_monitor_rotation(self, mock_fetch, mock_sync, mock_multi, mock_monitors, mock_save):
         from awall.daemon import change_wallpaper
         from awall.sources.base import WallpaperInfo
 
