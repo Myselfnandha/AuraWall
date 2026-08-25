@@ -112,7 +112,7 @@ class CacheManager:
         valid_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
         files = [
             p for p in self.cache_dir.iterdir()
-            if p.is_file() and p.suffix.lower() in valid_exts and not p.name.startswith("tmp_")
+            if p.is_file() and p.suffix.lower() in valid_exts and not p.name.startswith("tmp_") and not p.name.startswith("lockscreen")
         ]
         files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return files

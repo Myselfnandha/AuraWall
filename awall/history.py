@@ -114,10 +114,16 @@ class HistoryManager:
         if file_path_or_id is None:
             target_idx = len(entries) - 1
         else:
-            norm_target = str(Path(file_path_or_id).resolve()) if os.path.exists(file_path_or_id) else file_path_or_id
             for idx, entry in enumerate(entries):
-                if entry.get("id") == file_path_or_id or entry.get("file_path") == norm_target or entry.get("file_path") == file_path_or_id:
+                if entry.get("id") == file_path_or_id or entry.get("file_path") == file_path_or_id:
                     target_idx = idx
+                    break
+                try:
+                    if Path(entry.get("file_path", "")).resolve() == Path(file_path_or_id).resolve():
+                        target_idx = idx
+                        break
+                except Exception:
+                    pass
 
         if target_idx is not None:
             entries[target_idx]["is_favorite"] = is_fav

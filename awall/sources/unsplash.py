@@ -88,7 +88,8 @@ class UnsplashSource(WallpaperSource):
                     img_url = urls.get("raw") or urls.get("full") or urls.get("regular")
                     if img_url:
                         if "w=" not in img_url:
-                            img_url += "&w=3840&q=85&fit=crop"
+                            delimiter = "&" if "?" in img_url else "?"
+                            img_url += f"{delimiter}w=3840&q=85&fit=crop"
                         return WallpaperInfo(
                             url=img_url,
                             source_name="unsplash",
@@ -120,7 +121,8 @@ class UnsplashSource(WallpaperSource):
                     img_url = urls.get("raw") or urls.get("full") or urls.get("regular")
                     if img_url:
                         if "w=" not in img_url:
-                            img_url += "&w=3840&q=85&fit=crop"
+                            delimiter = "&" if "?" in img_url else "?"
+                            img_url += f"{delimiter}w=3840&q=85&fit=crop"
                         return WallpaperInfo(
                             url=img_url,
                             source_name="unsplash",

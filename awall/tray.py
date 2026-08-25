@@ -238,6 +238,7 @@ def run_tray():
                 p = prev_entry.get("file_path")
                 if p and Path(p).exists():
                     set_wallpaper(p, scaling=self.config.get("display", {}).get("scaling", "fill"))
+                    self.rotation_mgr.record_change()
             GLib.idle_add(self.build_menu)
 
         def _toggle_favorite(self, _):
@@ -260,11 +261,12 @@ def run_tray():
             self.build_menu()
 
         def _change_specific_topic(self, _, topic_id: str):
-            threading.Thread(
-                target=lambda: change_wallpaper(force_topic=topic_id, ignore_pause=True),
-                daemon=True,
-            ).start()
-            GLib.idle_add(self.build_menu)
+            def _worker():
+                change_wallpaper(force_topic=topic_id, ignore_pause=True)
+                self.rotation_mgr.record_change()
+                GLib.idle_add(self.build_menu)
+
+            threading.Thread(target=_worker, daemon=True).start()
 
         def _open_settings(self, _):
             subprocess.Popen([sys.executable, "-m", "awall", "gui"])
