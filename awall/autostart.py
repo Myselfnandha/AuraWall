@@ -8,7 +8,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 
 def get_autostart_dir() -> Path:
@@ -38,7 +38,7 @@ Type=Application
 Name=awall Wallpaper Engine Tray
 Comment=Free Automatic Wallpaper Engine System Tray
 Exec={get_exec_command()}
-Icon=preferences-desktop-wallpaper
+Icon=awall
 Terminal=false
 Categories=Utility;DesktopSettings;
 X-GNOME-Autostart-enabled=true

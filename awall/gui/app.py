@@ -12,7 +12,7 @@ def launch_gui() -> int:
     """Launches the GTK4/Libadwaita graphical configuration window."""
     if not is_gui_available():
         print("[awall] GTK4 or Libadwaita is not installed.")
-        print("Please install 'python-gobject', 'gtk4', and 'libadwaita' or use the CLI wizard with: awall config")
+        print("Please install 'python-gobject', 'gtk4', and 'libadwaita' to launch the application.")
         return 1
 
     import gi

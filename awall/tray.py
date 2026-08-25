@@ -73,33 +73,40 @@ def run_tray():
             self.history_mgr = HistoryManager()
             self.config = load_config()
             self.indicator = None
+            self.status_icon = None
 
-            icon_path = _get_icon_path() or "preferences-desktop-wallpaper"
+            assets_dir = (Path(__file__).parent / "assets").resolve()
+            icon_name = "tray-icon" if (assets_dir / "tray-icon.png").exists() else "awall"
 
             if AppInd:
                 self.indicator = AppInd.Indicator.new(
                     "awall-tray",
-                    icon_path,
+                    icon_name,
                     AppInd.IndicatorCategory.APPLICATION_STATUS,
                 )
-                if icon_path.endswith(".png"):
-                    self.indicator.set_icon_full(icon_path, "awall")
+                if assets_dir.exists():
+                    self.indicator.set_icon_theme_path(str(assets_dir))
+                self.indicator.set_icon_full(icon_name, "awall Wallpaper Engine")
+                self.indicator.set_title("awall Wallpaper Engine")
                 self.indicator.set_status(AppInd.IndicatorStatus.ACTIVE)
             else:
                 self.status_icon = Gtk.StatusIcon()
-                if icon_path.endswith(".png"):
-                    self.status_icon.set_from_file(icon_path)
+                tray_file = assets_dir / "tray-icon.png"
+                if tray_file.exists():
+                    self.status_icon.set_from_file(str(tray_file))
                 else:
-                    self.status_icon.set_from_icon_name(icon_path)
+                    self.status_icon.set_from_icon_name("preferences-desktop-wallpaper")
                 self.status_icon.set_tooltip_text("awall - Wallpaper Engine")
+                self.status_icon.set_visible(True)
 
             self.menu = Gtk.Menu()
             self.build_menu()
 
             if self.indicator:
                 self.indicator.set_menu(self.menu)
-            else:
+            elif self.status_icon:
                 self.status_icon.connect("popup-menu", self._on_status_icon_popup)
+                self.status_icon.connect("activate", self._on_status_icon_activate)
 
             # Periodic status check / auto-rotation timer
             GLib.timeout_add_seconds(10, self._periodic_update)
@@ -108,6 +115,11 @@ def run_tray():
             self.build_menu()
             self.menu.show_all()
             self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
+
+        def _on_status_icon_activate(self, icon):
+            self.build_menu()
+            self.menu.show_all()
+            self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, 0, Gtk.get_current_event_time())
 
         def build_menu(self):
             # Clear existing items

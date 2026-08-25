@@ -23,22 +23,18 @@
 
 ---
 
-## 🚀 Installation on Arch Linux
+## 🚀 Quick One-Step Installation
 
-### Method 1: Local / Pipx Install
 ```bash
 # Clone the repository
 git clone https://github.com/user/auto_wall.git
 cd auto_wall
 
-# Install in editable mode or user mode
-pip install --user .
-
-# Or using pipx
-pipx install .
+# One-step complete install (App launcher + Icons + Tray Autostart + systemd timer)
+./install.sh
 ```
 
-### Method 2: AUR (Arch User Repository)
+### Or using AUR (Arch User Repository)
 ```bash
 cd auto_wall
 makepkg -si
@@ -46,65 +42,55 @@ makepkg -si
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Features & Usage
 
-### 1. Run First-Time Setup Wizard
+### 1. Launch Settings & Preferences Application
+Open **"awall Wallpaper Engine"** directly from your desktop Application Menu / App Grid, or run:
 ```bash
-awall config
+awall
 ```
 
-### 2. Launch System Tray Icon
+### 2. Desktop System Tray Icon
 ```bash
 awall tray
 ```
+Right-click or click the system tray icon to switch sources, jump to the next/previous wallpaper, pause rotation, or access preferences.
 
-### 3. Launch Graphical Settings Panel (Optional)
-```bash
-awall gui
-# or
-awall config --gui
-```
+### 3. Startup Autorun
+Startup autorun is supported via two integrated methods:
+- **Desktop Login Autostart (XDG Autostart)**: Automatically launches the tray icon on desktop login:
+  ```bash
+  awall autostart enable
+  ```
+- **Background Systemd Timer**: Automatically rotates wallpapers on boot and on schedule without requiring the GUI:
+  ```bash
+  awall service install
+  ```
 
-### 4. Rotate to Next Wallpaper Now
+### 4. Application Menu Integration
+Install or refresh desktop application shortcuts (`.desktop`) and icons in `~/.local/share/applications/`:
 ```bash
-awall next
-```
-
-### 5. Check Solar Position & Live Weather
-```bash
-awall weather
-```
-
-### 6. Enable Desktop Overlay Widgets (Clock, Weather, Quotes)
-```bash
-awall widgets enable
+awall app install
 ```
 
 ---
 
-## ⌨️ CLI Command Reference
+## ⌨️ Command Reference
 
-| Command | Description |
+| Action | Command |
 |---|---|
-| `awall tray` | Launch desktop system tray icon with quick actions |
-| `awall next` | Immediately download and set the next wallpaper |
-| `awall prev` | Revert to previous wallpaper in history |
-| `awall weather` | Display current solar position, elevation, and live weather |
-| `awall widgets [enable\|disable\|status]` | Toggle desktop clock, weather, and quote widgets |
-| `awall autostart [enable\|disable\|status]` | Manage desktop login autostart for tray icon |
-| `awall fav` | Mark current wallpaper as favorite (protected from cache cleanup) |
-| `awall unfav` | Remove favorite status from current wallpaper |
-| `awall favorites` | List all saved favorite wallpapers |
-| `awall status` | Show current wallpaper, source, timer status, and cache stats |
-| `awall info` | Display detailed photographer credits, resolution, and URL |
-| `awall history` | Show recent history log of applied wallpapers |
-| `awall pause` / `awall resume` | Pause or resume background wallpaper rotation |
-| `awall set-source <name>` | Quickly switch active source (`unsplash`, `pexels`, `pixabay`, `reddit`, `local`, `auto`) |
-| `awall config` | Run interactive terminal setup wizard |
-| `awall gui` | Open modern GTK4 / Libadwaita settings window |
-| `awall service install` | Install and start background `systemd` user timer |
-| `awall service uninstall` | Stop and remove background `systemd` timer |
-| `awall service status` | Check status of systemd timer |
+| Launch Settings GUI | `awall` or `awall gui` |
+| Launch Desktop System Tray | `awall tray` |
+| Rotate to Next Wallpaper | `awall next` |
+| Revert to Previous Wallpaper | `awall prev` |
+| Manage Desktop Startup Autostart | `awall autostart [enable\|disable\|status]` |
+| Manage Desktop App Menu & Icons | `awall app [install\|uninstall\|status]` |
+| Manage Background systemd Timer | `awall service [install\|uninstall\|status]` |
+| Favorite / Unfavorite Wallpaper | `awall fav` / `awall unfav` / `awall favorites` |
+| Check Solar Position & Weather | `awall weather` |
+| Desktop Overlay Widgets | `awall widgets [enable\|disable\|status]` |
+| Pause / Resume Rotation | `awall pause` / `awall resume` |
+| Engine Status & Info | `awall status` / `awall info` / `awall history` |
 
 ---
 

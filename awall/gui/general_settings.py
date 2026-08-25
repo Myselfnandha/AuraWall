@@ -10,6 +10,8 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
 from typing import Any, Dict
 
+from awall.autostart import disable_autostart, enable_autostart, is_autostart_enabled
+from awall.desktop import install_desktop_app, is_desktop_app_installed, uninstall_desktop_app
 from awall.service import ServiceManager
 
 
@@ -171,3 +173,57 @@ class GeneralSettingsPage(Adw.PreferencesPage):
 
         credit_row.connect("notify::active", _on_credit_change)
         notif_group.add(credit_row)
+
+        # 5. Desktop & Startup Integration Group
+        system_group = Adw.PreferencesGroup()
+        system_group.set_title("Desktop & Startup Integration")
+        self.add(system_group)
+
+        # Desktop Autostart on Login
+        autostart_row = Adw.SwitchRow()
+        autostart_row.set_title("Launch Tray on Desktop Login")
+        autostart_row.set_subtitle("Automatically start system tray icon on user login")
+        autostart_row.set_active(is_autostart_enabled())
+
+        def _on_autostart_change(row, gparam):
+            if row.get_active():
+                enable_autostart()
+            else:
+                disable_autostart()
+
+        autostart_row.connect("notify::active", _on_autostart_change)
+        system_group.add(autostart_row)
+
+        # Background systemd Timer
+        sysd_status = self.svc_mgr.get_status()
+        service_row = Adw.SwitchRow()
+        service_row.set_title("Background systemd Timer")
+        service_row.set_subtitle("Automatic background rotation via systemd user timer")
+        service_row.set_active(bool(sysd_status.get("timer_active") or sysd_status.get("timer_enabled")))
+
+        def _on_service_change(row, gparam):
+            if row.get_active():
+                self.svc_mgr.install(
+                    interval_minutes=sched_cfg.get("interval_minutes", 5),
+                    on_boot=sched_cfg.get("on_boot", True),
+                )
+            else:
+                self.svc_mgr.uninstall()
+
+        service_row.connect("notify::active", _on_service_change)
+        system_group.add(service_row)
+
+        # Application Menu Launcher Entry
+        app_row = Adw.SwitchRow()
+        app_row.set_title("Application Menu Shortcut")
+        app_row.set_subtitle("Show awall in Linux application launcher menus and app grid")
+        app_row.set_active(is_desktop_app_installed())
+
+        def _on_app_menu_change(row, gparam):
+            if row.get_active():
+                install_desktop_app()
+            else:
+                uninstall_desktop_app()
+
+        app_row.connect("notify::active", _on_app_menu_change)
+        system_group.add(app_row)

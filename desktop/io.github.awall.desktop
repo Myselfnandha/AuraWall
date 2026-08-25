@@ -1,0 +1,37 @@
+[Desktop Entry]
+Type=Application
+Name=awall Wallpaper Engine
+GenericName=Wallpaper Engine
+Comment=Free Automatic Wallpaper Engine with multi-source fallback, dynamic lighting & widgets
+Exec=awall
+Icon=awall
+Terminal=false
+Categories=Utility;DesktopSettings;Settings;Graphics;
+Keywords=wallpaper;background;unsplash;pexels;reddit;engine;wallpapers;
+StartupNotify=true
+StartupWMClass=io.github.awall.settings
+Actions=Next;Prev;Tray;Settings;Pause;Resume;
+
+[Desktop Action Next]
+Name=Next Wallpaper
+Exec=awall next
+
+[Desktop Action Prev]
+Name=Previous Wallpaper
+Exec=awall prev
+
+[Desktop Action Tray]
+Name=Launch System Tray Icon
+Exec=awall tray
+
+[Desktop Action Settings]
+Name=Settings & Preferences
+Exec=awall gui
+
+[Desktop Action Pause]
+Name=Pause Rotation
+Exec=awall pause
+
+[Desktop Action Resume]
+Name=Resume Rotation
+Exec=awall resume

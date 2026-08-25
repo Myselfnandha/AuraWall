@@ -44,6 +44,20 @@ class TestCli(unittest.TestCase):
         self.assertEqual(code, 0)
         mock_cmd.assert_called_once()
 
+    @patch("awall.gui.app.launch_gui")
+    def test_cli_default_launches_gui(self, mock_gui):
+        mock_gui.return_value = 0
+        code = main([])
+        self.assertEqual(code, 0)
+        mock_gui.assert_called_once()
+
+    @patch("awall.cli.cmd_app")
+    def test_cli_app(self, mock_cmd):
+        mock_cmd.return_value = 0
+        code = main(["app", "install"])
+        self.assertEqual(code, 0)
+        mock_cmd.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

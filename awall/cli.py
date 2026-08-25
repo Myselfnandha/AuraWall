@@ -18,7 +18,6 @@ from awall.history import HistoryManager
 from awall.service import ServiceManager
 from awall.wallpaper_setter import detect_backend, set_wallpaper
 from awall.widgets import composite_widgets
-from awall.wizard import run_wizard
 
 # ANSI styling
 BOLD = "\033[1m"
@@ -240,12 +239,9 @@ def cmd_history(args: argparse.Namespace) -> int:
 
 
 def cmd_config(args: argparse.Namespace) -> int:
-    """Runs interactive setup wizard or launches GTK4 GUI."""
-    if getattr(args, "gui", False):
-        from awall.gui.app import launch_gui
-        return launch_gui()
-    run_wizard()
-    return 0
+    """Launches GTK4 GUI settings window."""
+    from awall.gui.app import launch_gui
+    return launch_gui()
 
 
 def cmd_tray(args: argparse.Namespace) -> int:
@@ -255,7 +251,7 @@ def cmd_tray(args: argparse.Namespace) -> int:
 
 
 def cmd_autostart(args: argparse.Namespace) -> int:
-    """Manages XDG desktop autostart."""
+    """Manages XDG desktop login autostart for tray."""
     from awall.autostart import disable_autostart, enable_autostart, get_autostart_status
     action = getattr(args, "action", "status")
     if action == "enable":
@@ -268,6 +264,27 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         print(f"  Autostart Enabled: {'Yes ✓' if st['enabled'] else 'No ✗'}")
         print(f"  Entry File:        {st['file']}")
         print(f"  Command:           {st['command']}\n")
+        return 0
+
+
+def cmd_app(args: argparse.Namespace) -> int:
+    """Manages desktop application launcher (.desktop) and icons."""
+    from awall.desktop import (
+        get_desktop_app_status,
+        install_desktop_app,
+        uninstall_desktop_app,
+    )
+    action = getattr(args, "action", "status")
+    if action == "install":
+        return 0 if install_desktop_app() else 1
+    elif action == "uninstall":
+        return 0 if uninstall_desktop_app() else 1
+    else:
+        st = get_desktop_app_status()
+        print(f"\n{BOLD}Desktop Application Status:{RESET}")
+        print(f"  Application Installed: {'Yes ✓' if st['installed'] else 'No ✗'}")
+        print(f"  Launcher File:         {st['file']}")
+        print(f"  Command:               {st['command']}\n")
         return 0
 
 
@@ -421,14 +438,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_hist.add_argument("-n", "--limit", type=int, default=15, help="Number of records to show")
     p_hist.set_defaults(func=cmd_history)
 
-    # config
-    p_cfg = subparsers.add_parser("config", help="Launch interactive setup wizard or GUI")
-    p_cfg.add_argument("--gui", action="store_true", help="Launch GTK4 graphical settings window")
+    # config / settings
+    p_cfg = subparsers.add_parser("config", aliases=["settings"], help="Launch GTK4 settings GUI window")
     p_cfg.set_defaults(func=cmd_config)
 
     # gui shortcut
-    p_gui = subparsers.add_parser("gui", help="Launch GTK4 settings GUI")
-    p_gui.set_defaults(func=lambda args: cmd_config(argparse.Namespace(gui=True)))
+    p_gui = subparsers.add_parser("gui", help="Launch GTK4 settings GUI window")
+    p_gui.set_defaults(func=cmd_config)
 
     # tray
     p_tray = subparsers.add_parser("tray", help="Launch desktop system tray icon with quick actions")
@@ -438,6 +454,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_auto = subparsers.add_parser("autostart", help="Manage desktop login autostart for tray")
     p_auto.add_argument("action", nargs="?", default="status", choices=["enable", "disable", "status"], help="Autostart action")
     p_auto.set_defaults(func=cmd_autostart)
+
+    # app menu integration
+    p_app = subparsers.add_parser("app", help="Manage desktop application menu entry (.desktop) & icons")
+    p_app.add_argument("action", nargs="?", default="status", choices=["install", "uninstall", "status"], help="Desktop app action")
+    p_app.set_defaults(func=cmd_app)
 
     # weather
     p_wtr = subparsers.add_parser("weather", help="Show current solar position, elevation, and live weather")
@@ -456,9 +477,9 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     args = parser.parse_args(argv)
     if not args.command:
-        # Default behavior with no arguments: show status or help
-        parser.print_help()
-        return 0
+        # Default behavior: launch GUI settings desktop application directly
+        from awall.gui.app import launch_gui
+        return launch_gui()
 
     return args.func(args)
 
