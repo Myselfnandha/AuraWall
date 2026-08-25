@@ -96,10 +96,10 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         focus_row.connect("notify::active", _on_focus_change)
         sched_group.add(focus_row)
 
-        # 2. Display & Transitions Group
+        # 2. Display and Transitions Group
         disp_cfg = self.config.setdefault("display", {})
         disp_group = Adw.PreferencesGroup()
-        disp_group.set_title("Display & Visual Effects")
+        disp_group.set_title("Display and Visual Effects")
         self.add(disp_group)
 
         scaling_row = Adw.ComboRow()
@@ -310,9 +310,9 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         credit_row.connect("notify::active", _on_credit_change)
         notif_group.add(credit_row)
 
-        # 5. Desktop & Startup Integration Group
+        # 5. Desktop and Startup Integration Group
         system_group = Adw.PreferencesGroup()
-        system_group.set_title("Desktop & Startup Integration")
+        system_group.set_title("Desktop and Startup Integration")
         self.add(system_group)
 
         # Desktop Autostart on Login

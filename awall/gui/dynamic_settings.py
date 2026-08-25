@@ -16,7 +16,7 @@ class DynamicSettingsPage(Adw.PreferencesPage):
 
     def __init__(self, config: Dict[str, Any], on_change_callback):
         super().__init__()
-        self.set_title("Dynamic & Weather")
+        self.set_title("Dynamic and Weather")
         self.set_icon_name("weather-clear-symbolic")
         self.config = config
         self.on_change = on_change_callback
@@ -45,7 +45,7 @@ class DynamicSettingsPage(Adw.PreferencesPage):
         main_group.add(dyn_switch)
 
         solar_switch = Adw.SwitchRow()
-        solar_switch.set_title("Solar Position & Time of Day")
+        solar_switch.set_title("Solar Position and Time of Day")
         solar_switch.set_subtitle("Dawn, Sunrise, Noon, Golden Hour, Sunset, Night")
         solar_switch.set_active(dyn_cfg.get("use_solar", True))
 
@@ -70,7 +70,7 @@ class DynamicSettingsPage(Adw.PreferencesPage):
 
         # 2. Location Group
         loc_group = Adw.PreferencesGroup()
-        loc_group.set_title("Location & Coordinates")
+        loc_group.set_title("Location and Coordinates")
         loc_group.set_description("Leave empty to use automatic IP geolocation.")
         self.add(loc_group)
 
