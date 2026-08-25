@@ -87,6 +87,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "schedule": {
         "interval_minutes": 5,  # 5, 15, 30, 60, 360, 1440, 10080, or custom
         "on_boot": True,
+        "pause_on_active_window": True,  # Pause rotation while apps are focused, resume on desktop
     },
     "display": {
         "scaling": "fill",  # "fill", "fit", "stretch", "center", "tile"

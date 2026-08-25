@@ -84,6 +84,18 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         boot_row.connect("notify::active", _on_boot_change)
         sched_group.add(boot_row)
 
+        focus_row = Adw.SwitchRow()
+        focus_row.set_title("Smart Pause on Active Application")
+        focus_row.set_subtitle("Pause rotation while using apps, change immediately when returning to desktop")
+        focus_row.set_active(sched_cfg.get("pause_on_active_window", True))
+
+        def _on_focus_change(row, gparam):
+            sched_cfg["pause_on_active_window"] = row.get_active()
+            self.on_change()
+
+        focus_row.connect("notify::active", _on_focus_change)
+        sched_group.add(focus_row)
+
         # 2. Display & Transitions Group
         disp_cfg = self.config.setdefault("display", {})
         disp_group = Adw.PreferencesGroup()

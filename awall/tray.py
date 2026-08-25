@@ -16,6 +16,7 @@ from awall.config import ALL_TOPICS, load_config, save_config
 from awall.daemon import change_wallpaper
 from awall.history import HistoryManager
 from awall.wallpaper_setter import set_wallpaper
+from awall.window_watcher import SmartRotationManager
 
 
 def is_tray_available() -> bool:
@@ -108,8 +109,9 @@ def run_tray():
                 self.status_icon.connect("popup-menu", self._on_status_icon_popup)
                 self.status_icon.connect("activate", self._on_status_icon_activate)
 
-            # Periodic status check / auto-rotation timer
-            GLib.timeout_add_seconds(10, self._periodic_update)
+            # System-triggered smart active-window watcher & power-saving auto-rotator
+            self.rotation_mgr = SmartRotationManager(on_trigger_callback=self._async_auto_rotate)
+            self.rotation_mgr.start()
 
         def _on_status_icon_popup(self, icon, button, time):
             self.build_menu()
@@ -120,6 +122,13 @@ def run_tray():
             self.build_menu()
             self.menu.show_all()
             self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, 0, Gtk.get_current_event_time())
+
+        def _async_auto_rotate(self):
+            threading.Thread(target=self._auto_rotate_worker, daemon=True).start()
+
+        def _auto_rotate_worker(self):
+            change_wallpaper(ignore_pause=False)
+            GLib.idle_add(self.build_menu)
 
         def build_menu(self):
             # Clear existing items
@@ -205,19 +214,21 @@ def run_tray():
 
             # 8. Quit Tray
             quit_item = Gtk.MenuItem(label="🚪 Quit Tray Icon")
-            quit_item.connect("activate", lambda _: Gtk.main_quit())
+            quit_item.connect("activate", self._on_quit)
             self.menu.append(quit_item)
 
             self.menu.show_all()
 
-        def _periodic_update(self) -> bool:
-            return True
+        def _on_quit(self, _):
+            self.rotation_mgr.stop()
+            Gtk.main_quit()
 
         def _on_next(self, _):
             threading.Thread(target=self._async_next, daemon=True).start()
 
         def _async_next(self):
             change_wallpaper(ignore_pause=True)
+            self.rotation_mgr.record_change()
             GLib.idle_add(self.build_menu)
 
         def _on_prev(self, _):
