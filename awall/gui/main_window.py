@@ -25,7 +25,15 @@ class MainWindow(Adw.PreferencesWindow):
     def __init__(self, app: Adw.Application):
         super().__init__(application=app)
         self.set_title("awall Wallpaper Engine")
-        self.set_default_size(880, 740)
+        self.set_default_size(920, 760)
+
+        # Ensure titlebar displays minimize, maximize/restore, and close buttons on the top right
+        try:
+            gtk_settings = Gtk.Settings.get_default()
+            if gtk_settings:
+                gtk_settings.set_property("gtk-decoration-layout", ":minimize,maximize,close")
+        except Exception:
+            pass
 
         self.config = load_config()
         self.history_mgr = HistoryManager()
