@@ -154,6 +154,10 @@ def install_desktop_app() -> bool:
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
+        for kbuild in ("kbuildsycoca6", "kbuildsycoca5"):
+            if shutil.which(kbuild):
+                subprocess.run([kbuild, "--noincremental"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                break
 
         print("[awall] Desktop application and icons successfully installed.")
         return True
@@ -190,6 +194,10 @@ def uninstall_desktop_app() -> bool:
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
+        for kbuild in ("kbuildsycoca6", "kbuildsycoca5"):
+            if shutil.which(kbuild):
+                subprocess.run([kbuild, "--noincremental"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                break
 
         print("[awall] Desktop application entry and icons uninstalled.")
         return True
