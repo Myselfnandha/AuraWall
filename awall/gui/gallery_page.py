@@ -203,7 +203,16 @@ class GalleryPage(Adw.PreferencesPage):
 
         self.grid_group.add(self.flowbox)
 
-        # Connect realize to unclamp the width constraint
+        # Status page placeholder for empty state
+        self.empty_status = Adw.StatusPage()
+        self.empty_status.set_icon_name("preferences-desktop-wallpaper-symbolic")
+        self.empty_status.set_title("No Cached Wallpapers Found")
+        self.empty_status.set_description("Wallpapers downloaded by awall will appear here automatically.")
+        self.empty_status.set_visible(False)
+        self.grid_group.add(self.empty_status)
+
+        # Connect map/realize to unclamp the width constraint
+        self.connect("map", lambda _: self._unclamp_page())
         self.connect("realize", lambda _: self._unclamp_page())
 
     def _unclamp_page(self):
@@ -217,14 +226,6 @@ class GalleryPage(Adw.PreferencesPage):
                 walk(child)
                 child = child.get_next_sibling()
         walk(self)
-
-        # Status page placeholder for empty state
-        self.empty_status = Adw.StatusPage()
-        self.empty_status.set_icon_name("preferences-desktop-wallpaper-symbolic")
-        self.empty_status.set_title("No Cached Wallpapers Found")
-        self.empty_status.set_description("Wallpapers downloaded by awall will appear here automatically.")
-        self.empty_status.set_visible(False)
-        self.grid_group.add(self.empty_status)
 
     def load_gallery(self):
         """Discovers cached files, deduplicates disk cache, applies source filters, and populates the grid."""

@@ -51,6 +51,20 @@ class MainWindow(Adw.PreferencesWindow):
         self.add(self.dynamic_page)
         self.add(self.general_page)
 
+        self.connect("map", lambda _: self._apply_window_controls())
+        self.connect("realize", lambda _: self._apply_window_controls())
+
+    def _apply_window_controls(self):
+        """Forces titlebar to display minimize, maximize, and close buttons on all desktop environments."""
+        def walk(w):
+            if isinstance(w, Gtk.WindowControls):
+                w.set_decoration_layout(":minimize,maximize,close")
+            child = w.get_first_child()
+            while child:
+                walk(child)
+                child = child.get_next_sibling()
+        walk(self)
+
     def _on_config_changed(self):
         """Auto-save config on any UI interaction and refresh gallery filter."""
         save_config(self.config)
