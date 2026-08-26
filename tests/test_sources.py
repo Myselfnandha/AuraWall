@@ -132,6 +132,38 @@ class TestSources(unittest.TestCase):
         self.assertIn("https://www.bing.com/th?id=OHR.TestImage", info.url)
         self.assertEqual(info.photographer, "Test Photographer (© Bing)")
 
+    @patch("requests.get")
+    def test_disabled_sources_omitted_from_chain(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "images": [
+                {
+                    "url": "/th?id=OHR.BingOnly_1920x1080.jpg",
+                    "copyright": "Bing Only",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        config = get_default_config()
+        # Disable all sources except bing
+        for src, val in config["sources"].items():
+            if isinstance(val, dict):
+                val["enabled"] = (src == "bing")
+
+        info, topic = fetch_wallpaper_from_chain(config)
+        self.assertEqual(info.source_name, "bing")
+
+    def test_all_sources_disabled_raises(self):
+        config = get_default_config()
+        for src, val in config["sources"].items():
+            if isinstance(val, dict):
+                val["enabled"] = False
+
+        with self.assertRaises(RuntimeError):
+            fetch_wallpaper_from_chain(config)
+
 
 if __name__ == "__main__":
     unittest.main()

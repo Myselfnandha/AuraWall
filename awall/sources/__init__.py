@@ -63,19 +63,26 @@ def fetch_wallpaper_from_chain(
     filters = config.get("filters", {})
     active_source = config.get("active_source", "auto")
 
+    sources_cfg = config.get("sources", {})
+
     # Determine order of sources to try
     sources_order: List[str] = []
     if active_source and active_source != "auto" and active_source in ALL_SOURCES:
-        sources_order.append(active_source)
+        if sources_cfg.get(active_source, {}).get("enabled", True):
+            sources_order.append(active_source)
 
-    configured_order = config.get("sources", {}).get("fallback_order", [])
+    configured_order = sources_cfg.get("fallback_order", [])
     for s in configured_order:
-        if s in ALL_SOURCES and s not in sources_order and config.get("sources", {}).get(s, {}).get("enabled", True):
+        if s in ALL_SOURCES and s not in sources_order and sources_cfg.get(s, {}).get("enabled", True):
             sources_order.append(s)
 
-    for s in ["wallhaven", "bing", "pexels", "unsplash", "pixabay", "reddit", "local"]:
-        if s in ALL_SOURCES and s not in sources_order:
+    default_order = ["wallhaven", "bing", "pexels", "unsplash", "pixabay", "reddit", "local"]
+    for s in default_order:
+        if s in ALL_SOURCES and s not in sources_order and sources_cfg.get(s, {}).get("enabled", True):
             sources_order.append(s)
+
+    if not sources_order:
+        raise RuntimeError("No wallpaper sources are currently enabled in configuration.")
 
     errors: List[str] = []
     for source_name in sources_order:
