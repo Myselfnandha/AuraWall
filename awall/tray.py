@@ -76,6 +76,7 @@ def run_tray():
             self.indicator = None
             self.status_icon = None
 
+            assets_dir = (Path(__file__).parent / "assets").resolve()
             desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
             # XFCE, MATE, LXDE, and X11 standalone panels use legacy XEmbed Notification Area
             is_legacy_systray = any(d in desktop_env for d in ("XFCE", "MATE", "LXDE", "X-GENERIC")) or not AppInd
