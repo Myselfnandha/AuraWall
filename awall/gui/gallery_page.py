@@ -157,7 +157,7 @@ class GalleryPage(Adw.PreferencesPage):
         self.header_group.set_description("Browse, preview, and apply downloaded wallpapers from your collection.")
         self.add(self.header_group)
 
-        # Toolbar Row: Search Entry + Stats + Refresh Button
+        # Toolbar Row: Search Entry + Stats + Window Controls
         toolbar_row = Adw.ActionRow()
 
         # Real-time Search Entry
@@ -167,6 +167,13 @@ class GalleryPage(Adw.PreferencesPage):
         self.search_entry.set_valign(Gtk.Align.CENTER)
         self.search_entry.connect("search-changed", self._on_search_changed)
         toolbar_row.add_prefix(self.search_entry)
+
+        # Move / Drag Handle
+        drag_btn = Gtk.Button.new_from_icon_name("view-more-horizontal-symbolic")
+        drag_btn.set_valign(Gtk.Align.CENTER)
+        drag_btn.set_tooltip_text("Drag to Move Window")
+        drag_btn.add_css_class("flat")
+        toolbar_row.add_suffix(drag_btn)
 
         # Stats Label
         self.stats_label = Gtk.Label()
@@ -180,7 +187,27 @@ class GalleryPage(Adw.PreferencesPage):
         refresh_btn.set_tooltip_text("Refresh & Deduplicate Gallery")
         refresh_btn.connect("clicked", lambda _: self.load_gallery())
         toolbar_row.add_suffix(refresh_btn)
-        self.header_group.add(toolbar_row)
+
+        # Minimize Button
+        min_btn = Gtk.Button.new_from_icon_name("window-minimize-symbolic")
+        min_btn.set_valign(Gtk.Align.CENTER)
+        min_btn.set_tooltip_text("Minimize Window")
+        min_btn.connect("clicked", self._on_minimize_clicked)
+        toolbar_row.add_suffix(min_btn)
+
+        # Maximize / Restore Toggle Button
+        self.max_btn = Gtk.Button.new_from_icon_name("window-maximize-symbolic")
+        self.max_btn.set_valign(Gtk.Align.CENTER)
+        self.max_btn.set_tooltip_text("Maximize Window")
+        self.max_btn.connect("clicked", self._on_maximize_toggle_clicked)
+        toolbar_row.add_suffix(self.max_btn)
+
+        # Wrap in WindowHandle for native click-and-drag window movement
+        handle = Gtk.WindowHandle()
+        handle.set_child(toolbar_row)
+        self.header_group.add(handle)
+
+        self.connect("realize", lambda _: self._sync_window_state())
 
         # Grid Group
         self.grid_group = Adw.PreferencesGroup()
@@ -297,6 +324,45 @@ class GalleryPage(Adw.PreferencesPage):
         for card in list(self.cards):
             thumb_path = self.cache_mgr.get_thumbnail(card.image_path, width=320, height=180)
             GLib.idle_add(card.set_thumbnail_file, thumb_path)
+
+    def _on_minimize_clicked(self, _):
+        """Minimizes the root window."""
+        root_win = self.get_root()
+        if root_win and hasattr(root_win, "minimize"):
+            root_win.minimize()
+
+    def _on_maximize_toggle_clicked(self, _):
+        """Toggles maximization of the root window."""
+        root_win = self.get_root()
+        if not root_win:
+            return
+        if hasattr(root_win, "is_maximized") and root_win.is_maximized():
+            root_win.unmaximize()
+            self.max_btn.set_icon_name("window-maximize-symbolic")
+            self.max_btn.set_tooltip_text("Maximize Window")
+        else:
+            root_win.maximize()
+            self.max_btn.set_icon_name("view-restore-symbolic")
+            self.max_btn.set_tooltip_text("Restore Window Size")
+
+    def _sync_window_state(self):
+        """Connects to root window maximize state changes to keep button icon synced."""
+        root_win = self.get_root()
+        if root_win and not getattr(self, "_win_connected", False):
+            self._win_connected = True
+            root_win.connect("notify::maximized", self._on_win_maximized_changed)
+            if hasattr(root_win, "is_maximized") and root_win.is_maximized():
+                self.max_btn.set_icon_name("view-restore-symbolic")
+                self.max_btn.set_tooltip_text("Restore Window Size")
+
+    def _on_win_maximized_changed(self, win, _):
+        """Callback for root window maximize notification."""
+        if win.is_maximized():
+            self.max_btn.set_icon_name("view-restore-symbolic")
+            self.max_btn.set_tooltip_text("Restore Window Size")
+        else:
+            self.max_btn.set_icon_name("window-maximize-symbolic")
+            self.max_btn.set_tooltip_text("Maximize Window")
 
     def _on_card_clicked(self, image_path: Path, history_entry: Optional[Dict[str, Any]]):
         """Opens the modal preview dialog."""
