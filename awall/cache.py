@@ -81,16 +81,67 @@ class CacheManager:
                 temp_file.unlink()
             raise ValueError(f"Downloaded file is not a valid image: {e}")
 
+        # Check if an identical image already exists in cache (content hash match)
+        content_hash = hashlib.md5(temp_file.read_bytes()).hexdigest()
+        for existing in self.get_cached_files():
+            try:
+                if existing.exists() and existing.stat().st_size == temp_file.stat().st_size:
+                    if hashlib.md5(existing.read_bytes()).hexdigest() == content_hash:
+                        temp_file.unlink()
+                        return existing
+            except Exception:
+                pass
+
         final_filename = f"{source_prefix}_{timestamp}_{url_hash}.{ext}"
         final_path = self.cache_dir / final_filename
 
         # Rename temp to final
         temp_file.rename(final_path)
 
-        # Trigger pruning
+        # Trigger pruning & deduplication
         self.prune()
 
         return final_path
+
+    def deduplicate_cache(self) -> int:
+        """
+        Scans cache files for identical content MD5 hashes and deletes duplicates,
+        preserving favorited or canonical copies.
+        Returns the number of duplicate files removed.
+        """
+        files = self.get_cached_files()
+        hash_map: Dict[str, Path] = {}
+        deleted_count = 0
+
+        for file_path in files:
+            try:
+                if not file_path.exists():
+                    continue
+                file_hash = hashlib.md5(file_path.read_bytes()).hexdigest()
+                if file_hash in hash_map:
+                    canonical = hash_map[file_hash]
+                    # If this duplicate is a favorite, swap to keep it canonical
+                    if self.history_mgr.is_file_favorite(str(file_path)):
+                        hash_map[file_hash] = file_path
+                        to_delete = canonical
+                    else:
+                        to_delete = file_path
+
+                    try:
+                        to_delete.unlink()
+                        deleted_count += 1
+                        # Clean associated thumbnail if present
+                        thumb_candidates = list(self.get_thumbnails_dir().glob(f"thumb_{to_delete.stem}_*.jpg"))
+                        for t in thumb_candidates:
+                            t.unlink()
+                    except Exception:
+                        pass
+                else:
+                    hash_map[file_hash] = file_path
+            except Exception:
+                continue
+
+        return deleted_count
 
     def save_local_copy(self, source_path: str | Path, source_prefix: str = "local") -> Path:
         """Copies a local image file into cache."""

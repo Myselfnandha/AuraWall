@@ -24,8 +24,8 @@ class MainWindow(Adw.PreferencesWindow):
 
     def __init__(self, app: Adw.Application):
         super().__init__(application=app)
-        self.set_title("awall Settings")
-        self.set_default_size(780, 720)
+        self.set_title("awall Wallpaper Engine")
+        self.set_default_size(880, 740)
 
         self.config = load_config()
         self.history_mgr = HistoryManager()
@@ -44,5 +44,8 @@ class MainWindow(Adw.PreferencesWindow):
         self.add(self.general_page)
 
     def _on_config_changed(self):
-        """Auto-save config on any UI interaction."""
+        """Auto-save config on any UI interaction and refresh gallery filter."""
         save_config(self.config)
+        if hasattr(self, "gallery_page"):
+            self.gallery_page.config = self.config
+            self.gallery_page.load_gallery()

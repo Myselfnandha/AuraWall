@@ -51,6 +51,40 @@ class TestGallery(unittest.TestCase):
         res = self.cache_mgr.get_thumbnail(non_existent)
         self.assertEqual(res, non_existent)
 
+    def test_cache_deduplication(self):
+        # Create an exact duplicate with a different filename prefix
+        dup_img = self.cache_dir / "lock_bing_duplicate.jpg"
+        dup_img.write_bytes(self.test_img.read_bytes())
+
+        # Verify 2 files exist before deduplication
+        self.assertEqual(len(self.cache_mgr.get_cached_files()), 2)
+
+        # Run deduplicate_cache
+        removed = self.cache_mgr.deduplicate_cache()
+        self.assertEqual(removed, 1)
+
+        # Verify only 1 canonical copy remains
+        files = self.cache_mgr.get_cached_files()
+        self.assertEqual(len(files), 1)
+
+    def test_get_file_source_detection(self):
+        from awall.gui.gallery_page import get_file_source
+
+        # Explicit history record
+        p1 = Path("/tmp/sample1.jpg")
+        self.assertEqual(get_file_source(p1, {"source": "bing"}), "bing")
+        self.assertEqual(get_file_source(p1, {"source": "wallhaven"}), "wallhaven")
+
+        # Filename prefix fallback
+        p2 = Path("/tmp/lock_bing_12345.jpg")
+        self.assertEqual(get_file_source(p2, None), "bing")
+
+        p3 = Path("/tmp/pexels_8888.jpg")
+        self.assertEqual(get_file_source(p3, None), "pexels")
+
+        p4 = Path("/tmp/custom_wallpaper.png")
+        self.assertEqual(get_file_source(p4, None), "local")
+
 
 if __name__ == "__main__":
     unittest.main()
