@@ -51,19 +51,75 @@ class MainWindow(Adw.PreferencesWindow):
         self.add(self.dynamic_page)
         self.add(self.general_page)
 
-        self.connect("map", lambda _: self._apply_window_controls())
-        self.connect("realize", lambda _: self._apply_window_controls())
+        self._setup_headerbar_elements()
 
-    def _apply_window_controls(self):
-        """Forces titlebar to display minimize, maximize, and close buttons on all desktop environments."""
-        def walk(w):
-            if isinstance(w, Gtk.WindowControls):
-                w.set_decoration_layout(":minimize,maximize,close")
+    def _setup_headerbar_elements(self):
+        """Places the app name on the left of the search icon and minimize/maximize buttons to the left of close."""
+        header_bar = None
+
+        def find_header(w):
+            nonlocal header_bar
+            if isinstance(w, Adw.HeaderBar):
+                header_bar = w
+                return
             child = w.get_first_child()
             while child:
-                walk(child)
+                find_header(child)
                 child = child.get_next_sibling()
-        walk(self)
+
+        find_header(self)
+        if not header_bar:
+            return
+
+        # 1. Left side: App name and logo (to the left of search icon)
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        title_box.set_valign(Gtk.Align.CENTER)
+        title_box.set_margin_start(10)
+        title_box.set_margin_end(6)
+
+        logo = Gtk.Image.new_from_icon_name("preferences-desktop-wallpaper-symbolic")
+        title_lbl = Gtk.Label(label="awall")
+        title_lbl.add_css_class("title-4")
+        title_lbl.add_css_class("heading")
+
+        title_box.append(logo)
+        title_box.append(title_lbl)
+        header_bar.pack_start(title_box)
+
+        # 2. Right side: Minimize and Maximize/Restore buttons (to the left of close button)
+        min_btn = Gtk.Button.new_from_icon_name("window-minimize-symbolic")
+        min_btn.set_valign(Gtk.Align.CENTER)
+        min_btn.add_css_class("flat")
+        min_btn.set_tooltip_text("Minimize Window")
+        min_btn.connect("clicked", lambda _: self.minimize())
+
+        self.max_btn = Gtk.Button.new_from_icon_name("window-maximize-symbolic")
+        self.max_btn.set_valign(Gtk.Align.CENTER)
+        self.max_btn.add_css_class("flat")
+        self.max_btn.set_tooltip_text("Maximize Window")
+
+        def toggle_maximize(_):
+            if self.is_maximized():
+                self.unmaximize()
+            else:
+                self.maximize()
+
+        self.max_btn.connect("clicked", toggle_maximize)
+
+        # Sync maximize icon on window state changes
+        def on_maximized_changed(win, _):
+            if win.is_maximized():
+                self.max_btn.set_icon_name("view-restore-symbolic")
+                self.max_btn.set_tooltip_text("Restore Window Size")
+            else:
+                self.max_btn.set_icon_name("window-maximize-symbolic")
+                self.max_btn.set_tooltip_text("Maximize Window")
+
+        self.connect("notify::maximized", on_maximized_changed)
+
+        # pack_end adds widgets from right to left, placing them directly left of close
+        header_bar.pack_end(self.max_btn)
+        header_bar.pack_end(min_btn)
 
     def _on_config_changed(self):
         """Auto-save config on any UI interaction and refresh gallery filter."""
