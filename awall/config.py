@@ -37,12 +37,21 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "active_source": "auto",  # 'auto' to use fallback_order, or specific source name
     "sources": {
         "fallback_order": [
-            "unsplash",
+            "wallhaven",
+            "bing",
             "pexels",
+            "unsplash",
             "pixabay",
             "reddit",
             "local",
         ],
+        "wallhaven": {
+            "enabled": True,
+            "api_key": "",
+        },
+        "bing": {
+            "enabled": True,
+        },
         "unsplash": {
             "enabled": True,
             "api_key": "",  # Optional; uses public endpoints/demo key if blank

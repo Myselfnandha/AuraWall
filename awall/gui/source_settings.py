@@ -30,7 +30,50 @@ class SourceSettingsPage(Adw.PreferencesPage):
         sources_group.set_description("Enable sources and configure API keys or local folders.")
         self.add(sources_group)
 
-        # 1. Unsplash Row
+        # 1. Wallhaven Row
+        wallhaven_cfg = sources_cfg.setdefault("wallhaven", {"enabled": True, "api_key": ""})
+        wallhaven_exp = Adw.ExpanderRow()
+        wallhaven_exp.set_title("Wallhaven")
+        wallhaven_exp.set_subtitle("4K and 8K digital art and photography (Free, no key required)")
+        wallhaven_exp.set_show_enable_switch(True)
+        wallhaven_exp.set_enable_expansion(wallhaven_cfg.get("enabled", True))
+
+        def _toggle_wallhaven(row, gparam):
+            wallhaven_cfg["enabled"] = row.get_enable_expansion()
+            self.on_change()
+
+        wallhaven_exp.connect("notify::enable-expansion", _toggle_wallhaven)
+
+        wallhaven_key_row = Adw.EntryRow()
+        wallhaven_key_row.set_title("API Key (Optional)")
+        wallhaven_key_row.set_text(wallhaven_cfg.get("api_key", ""))
+
+        def _change_wallhaven_key(row):
+            wallhaven_cfg["api_key"] = row.get_text().strip()
+            self.on_change()
+
+        wallhaven_key_row.connect("changed", _change_wallhaven_key)
+        wallhaven_exp.add_row(wallhaven_key_row)
+        sources_group.add(wallhaven_exp)
+
+        # 2. Bing Daily Row
+        bing_cfg = sources_cfg.setdefault("bing", {"enabled": True})
+        bing_exp = Adw.ActionRow()
+        bing_exp.set_title("Bing Daily Wallpaper")
+        bing_exp.set_subtitle("Daily curated ultra HD photography from Microsoft Bing (No key required)")
+        bing_switch = Gtk.Switch()
+        bing_switch.set_valign(Gtk.Align.CENTER)
+        bing_switch.set_active(bing_cfg.get("enabled", True))
+
+        def _toggle_bing(switch, gparam):
+            bing_cfg["enabled"] = switch.get_active()
+            self.on_change()
+
+        bing_switch.connect("notify::active", _toggle_bing)
+        bing_exp.add_suffix(bing_switch)
+        sources_group.add(bing_exp)
+
+        # 3. Unsplash Row
         unsplash_cfg = sources_cfg.setdefault("unsplash", {"enabled": True, "api_key": ""})
         unsplash_exp = Adw.ExpanderRow()
         unsplash_exp.set_title("Unsplash")
@@ -56,7 +99,7 @@ class SourceSettingsPage(Adw.PreferencesPage):
         unsplash_exp.add_row(unsplash_key_row)
         sources_group.add(unsplash_exp)
 
-        # 2. Pexels Row
+        # 4. Pexels Row
         pexels_cfg = sources_cfg.setdefault("pexels", {"enabled": True, "api_key": ""})
         pexels_exp = Adw.ExpanderRow()
         pexels_exp.set_title("Pexels")

@@ -451,7 +451,7 @@ def build_parser() -> argparse.ArgumentParser:
     # next & prev
     p_next = subparsers.add_parser("next", aliases=["run", "rotate", "cycle"], help="Rotate to next wallpaper")
     p_next.add_argument("-t", "--topic", help="Specific topic to fetch")
-    p_next.add_argument("-s", "--source", choices=["unsplash", "pexels", "pixabay", "reddit", "local"], help="Force specific source")
+    p_next.add_argument("-s", "--source", choices=["wallhaven", "bing", "unsplash", "pexels", "pixabay", "reddit", "local"], help="Force specific source")
     p_next.set_defaults(func=cmd_next)
 
     p_prev = subparsers.add_parser("prev", help="Revert to previous wallpaper in history")

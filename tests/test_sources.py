@@ -10,18 +10,24 @@ from PIL import Image
 
 from awall.config import get_default_config
 from awall.sources import ALL_SOURCES, fetch_wallpaper_from_chain, get_source, pick_next_topic
+from awall.sources.bing import BingSource
 from awall.sources.local import LocalSource
 from awall.sources.unsplash import UnsplashSource
+from awall.sources.wallhaven import WallhavenSource
 
 
 class TestSources(unittest.TestCase):
     def test_sources_registry(self):
+        self.assertIn("wallhaven", ALL_SOURCES)
+        self.assertIn("bing", ALL_SOURCES)
         self.assertIn("unsplash", ALL_SOURCES)
         self.assertIn("pexels", ALL_SOURCES)
         self.assertIn("pixabay", ALL_SOURCES)
         self.assertIn("reddit", ALL_SOURCES)
         self.assertIn("local", ALL_SOURCES)
 
+        self.assertIsNotNone(get_source("wallhaven"))
+        self.assertIsNotNone(get_source("bing"))
         self.assertIsNotNone(get_source("unsplash"))
         self.assertIsNone(get_source("nonexistent"))
 
@@ -77,6 +83,54 @@ class TestSources(unittest.TestCase):
         self.assertEqual(info.source_name, "unsplash")
         self.assertEqual(info.photographer, "Test Photographer")
         self.assertIn("https://images.unsplash.com/test_url", info.url)
+
+    @patch("requests.get")
+    def test_wallhaven_fetch_mock(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "id": "abc123",
+                    "path": "https://w.wallhaven.cc/full/ab/wallhaven-abc123.jpg",
+                    "url": "https://wallhaven.cc/w/abc123",
+                    "dimension_x": 3840,
+                    "dimension_y": 2160,
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        src = WallhavenSource()
+        config = get_default_config()
+        info = src.fetch("nature", {}, config)
+
+        self.assertEqual(info.source_name, "wallhaven")
+        self.assertEqual(info.url, "https://w.wallhaven.cc/full/ab/wallhaven-abc123.jpg")
+        self.assertEqual(info.width, 3840)
+
+    @patch("requests.get")
+    def test_bing_fetch_mock(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "images": [
+                {
+                    "url": "/th?id=OHR.TestImage_EN-US12345_1920x1080.jpg",
+                    "copyright": "Test Photographer (© Bing)",
+                    "title": "Stunning Sunrise",
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        src = BingSource()
+        config = get_default_config()
+        info = src.fetch("nature", {}, config)
+
+        self.assertEqual(info.source_name, "bing")
+        self.assertIn("https://www.bing.com/th?id=OHR.TestImage", info.url)
+        self.assertEqual(info.photographer, "Test Photographer (© Bing)")
 
 
 if __name__ == "__main__":

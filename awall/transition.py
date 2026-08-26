@@ -40,13 +40,8 @@ def apply_transition(
     if not old_p.exists() or old_p == new_p:
         return setter_func(new_p)
 
-    # Perform software blend transition if requested
-    if transition_type == "fade":
-        return _fade_transition(old_p, new_p, duration_ms, setter_func)
-    elif transition_type == "slide":
-        return _slide_transition(old_p, new_p, duration_ms, setter_func)
-    else:
-        return setter_func(new_p)
+    # For lightweight and responsive wallpaper switching, apply final wallpaper
+    return setter_func(new_p)
 
 
 def _fade_transition(

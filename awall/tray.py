@@ -179,8 +179,10 @@ def run_tray():
 
             sources_list = [
                 ("Automatic (Fallback Chain)", "auto"),
-                ("Unsplash", "unsplash"),
+                ("Wallhaven (4K/8K Art & Photos)", "wallhaven"),
+                ("Bing Daily Wallpaper", "bing"),
                 ("Pexels", "pexels"),
+                ("Unsplash", "unsplash"),
                 ("Pixabay", "pixabay"),
                 ("Reddit", "reddit"),
                 ("Local Folder", "local"),

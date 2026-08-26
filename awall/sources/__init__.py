@@ -8,15 +8,19 @@ import random
 from typing import Any, Dict, List, Optional, Tuple
 
 from awall.sources.base import WallpaperInfo, WallpaperSource
-from awall.sources.unsplash import UnsplashSource
+from awall.sources.bing import BingSource
+from awall.sources.local import LocalSource
 from awall.sources.pexels import PexelsSource
 from awall.sources.pixabay import PixabaySource
 from awall.sources.reddit import RedditSource
-from awall.sources.local import LocalSource
+from awall.sources.unsplash import UnsplashSource
+from awall.sources.wallhaven import WallhavenSource
 
 ALL_SOURCES: Dict[str, WallpaperSource] = {
-    "unsplash": UnsplashSource(),
+    "wallhaven": WallhavenSource(),
+    "bing": BingSource(),
     "pexels": PexelsSource(),
+    "unsplash": UnsplashSource(),
     "pixabay": PixabaySource(),
     "reddit": RedditSource(),
     "local": LocalSource(),
@@ -62,15 +66,16 @@ def fetch_wallpaper_from_chain(
     # Determine order of sources to try
     sources_order: List[str] = []
     if active_source and active_source != "auto" and active_source in ALL_SOURCES:
-        sources_order = [active_source]
-    else:
-        configured_order = config.get("sources", {}).get("fallback_order", [])
-        for s in configured_order:
-            if s in ALL_SOURCES and config.get("sources", {}).get(s, {}).get("enabled", True):
-                sources_order.append(s)
+        sources_order.append(active_source)
 
-    if not sources_order:
-        sources_order = ["unsplash", "pexels", "pixabay", "reddit", "local"]
+    configured_order = config.get("sources", {}).get("fallback_order", [])
+    for s in configured_order:
+        if s in ALL_SOURCES and s not in sources_order and config.get("sources", {}).get(s, {}).get("enabled", True):
+            sources_order.append(s)
+
+    for s in ["wallhaven", "bing", "pexels", "unsplash", "pixabay", "reddit", "local"]:
+        if s in ALL_SOURCES and s not in sources_order:
+            sources_order.append(s)
 
     errors: List[str] = []
     for source_name in sources_order:

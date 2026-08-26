@@ -100,7 +100,7 @@ def process_lock_wallpaper(
                 overlay = Image.new("RGBA", img.size, (0, 0, 0, alpha_val))
                 img = Image.alpha_composite(img, overlay)
 
-            img.convert("RGB").save(out_path, format="PNG", optimize=True)
+            img.convert("RGB").save(out_path, format="PNG", compress_level=1)
             return out_path
     except Exception as e:
         print(f"[awall] Warning: Lock screen effect processing failed ({e}). Using raw wallpaper.")
