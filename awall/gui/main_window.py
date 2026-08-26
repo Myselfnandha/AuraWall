@@ -12,6 +12,7 @@ from gi.repository import Adw, Gtk
 from awall.config import load_config, save_config
 from awall.daemon import change_wallpaper
 from awall.gui.dynamic_settings import DynamicSettingsPage
+from awall.gui.gallery_page import GalleryPage
 from awall.gui.general_settings import GeneralSettingsPage
 from awall.gui.source_settings import SourceSettingsPage
 from awall.gui.topic_settings import TopicSettingsPage
@@ -24,17 +25,19 @@ class MainWindow(Adw.PreferencesWindow):
     def __init__(self, app: Adw.Application):
         super().__init__(application=app)
         self.set_title("awall Settings")
-        self.set_default_size(740, 700)
+        self.set_default_size(780, 720)
 
         self.config = load_config()
         self.history_mgr = HistoryManager()
 
         # Add Preferences Pages
+        self.gallery_page = GalleryPage(self.config, self._on_config_changed)
         self.sources_page = SourceSettingsPage(self.config, self._on_config_changed)
         self.topics_page = TopicSettingsPage(self.config, self._on_config_changed)
         self.dynamic_page = DynamicSettingsPage(self.config, self._on_config_changed)
         self.general_page = GeneralSettingsPage(self.config, self._on_config_changed)
 
+        self.add(self.gallery_page)
         self.add(self.sources_page)
         self.add(self.topics_page)
         self.add(self.dynamic_page)

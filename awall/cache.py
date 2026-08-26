@@ -175,6 +175,38 @@ class CacheManager:
 
         return cached[0] if cached else None
 
+    def get_thumbnails_dir(self) -> Path:
+        """Returns the directory used for cached image thumbnails."""
+        thumb_dir = self.cache_dir / "thumbnails"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        return thumb_dir
+
+    def get_thumbnail(self, image_path: str | Path, width: int = 320, height: int = 180) -> Path:
+        """
+        Generates or retrieves a cached 320x180 thumbnail for an image.
+        Uses fast aspect-preserving bilinear downscaling.
+        """
+        src_path = Path(image_path).resolve()
+        if not src_path.exists():
+            return src_path
+
+        thumb_dir = self.get_thumbnails_dir()
+        file_hash = hashlib.md5(f"{src_path.name}_{src_path.stat().st_mtime}_{width}x{height}".encode()).hexdigest()[:12]
+        thumb_path = thumb_dir / f"thumb_{src_path.stem}_{file_hash}.jpg"
+
+        if thumb_path.exists():
+            return thumb_path
+
+        try:
+            with Image.open(src_path) as img:
+                img = img.convert("RGB")
+                img.thumbnail((width, height), Image.Resampling.BILINEAR)
+                thumb_path.parent.mkdir(parents=True, exist_ok=True)
+                img.save(thumb_path, "JPEG", quality=80)
+                return thumb_path
+        except Exception:
+            return src_path
+
     def get_stats(self) -> Tuple[int, float]:
         """Returns (file_count, total_size_mb)."""
         files = self.get_cached_files()
