@@ -76,10 +76,16 @@ def run_tray():
             self.indicator = None
             self.status_icon = None
 
-            assets_dir = (Path(__file__).parent / "assets").resolve()
-            icon_name = "tray-icon" if (assets_dir / "tray-icon.png").exists() else "awall"
+            desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+            # XFCE, MATE, LXDE, and X11 standalone panels use legacy XEmbed Notification Area
+            is_legacy_systray = any(d in desktop_env for d in ("XFCE", "MATE", "LXDE", "X-GENERIC")) or not AppInd
 
-            if AppInd:
+            tray_file = assets_dir / "tray-icon.png"
+            if not tray_file.exists():
+                tray_file = Path.home() / ".local" / "share" / "pixmaps" / "awall.png"
+
+            if not is_legacy_systray and AppInd:
+                icon_name = "awall"
                 self.indicator = AppInd.Indicator.new(
                     "awall-tray",
                     icon_name,
@@ -92,12 +98,11 @@ def run_tray():
                 self.indicator.set_status(AppInd.IndicatorStatus.ACTIVE)
             else:
                 self.status_icon = Gtk.StatusIcon()
-                tray_file = assets_dir / "tray-icon.png"
                 if tray_file.exists():
                     self.status_icon.set_from_file(str(tray_file))
                 else:
                     self.status_icon.set_from_icon_name("preferences-desktop-wallpaper")
-                self.status_icon.set_tooltip_text("awall - Wallpaper Engine")
+                self.status_icon.set_tooltip_text("awall Wallpaper Engine")
                 self.status_icon.set_visible(True)
 
             self.menu = Gtk.Menu()
