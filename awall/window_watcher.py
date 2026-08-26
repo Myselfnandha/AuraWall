@@ -62,21 +62,25 @@ def check_is_desktop_active() -> bool:
     # 3. X11 (via xprop)
     if shutil.which("xprop"):
         try:
-            out = subprocess.check_output(
-                ["xprop", "-root", "_NET_ACTIVE_WINDOW"],
+            root_out = subprocess.check_output(
+                ["xprop", "-root", "_NET_SHOWING_DESKTOP", "_NET_ACTIVE_WINDOW"],
                 stderr=subprocess.DEVNULL,
                 timeout=1,
             ).decode("utf-8")
 
-            match = re.search(r"#\s*(0x[0-9a-fA-F]+)", out)
+            # Check if "Show Desktop" is active
+            if re.search(r"_NET_SHOWING_DESKTOP\(CARDINAL\)\s*=\s*1", root_out):
+                return True
+
+            match = re.search(r"_NET_ACTIVE_WINDOW.*?#\s*(0x[0-9a-fA-F]+)", root_out)
             if not match:
                 return True
             wid = match.group(1)
-            if wid == "0x0" or int(wid, 16) == 0:
+            if wid in ("0x0", "0x00000000") or int(wid, 16) == 0:
                 return True
 
             wout = subprocess.check_output(
-                ["xprop", "-id", wid, "_NET_WM_WINDOW_TYPE", "WM_CLASS"],
+                ["xprop", "-id", wid, "_NET_WM_WINDOW_TYPE", "WM_CLASS", "_NET_WM_STATE"],
                 stderr=subprocess.DEVNULL,
                 timeout=1,
             ).decode("utf-8")
@@ -90,9 +94,12 @@ def check_is_desktop_active() -> bool:
                 "nautilus",
                 "nemo",
                 "caja",
+                "pcmanfm",
                 "plasma-desktop",
                 "plasmashell",
                 "gnome-shell",
+                "kded5",
+                "kded6",
             }
             wout_lower = wout.lower()
             for dc in desktop_classes:
@@ -332,7 +339,7 @@ class SmartRotationWatcher:
         if shutil.which("xprop") and (os.environ.get("DISPLAY") or not os.environ.get("WAYLAND_DISPLAY")):
             try:
                 self._proc = subprocess.Popen(
-                    ["xprop", "-spy", "-root", "_NET_ACTIVE_WINDOW"],
+                    ["xprop", "-spy", "-root", "_NET_ACTIVE_WINDOW", "_NET_SHOWING_DESKTOP", "_NET_CURRENT_DESKTOP"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
