@@ -241,5 +241,22 @@ def sync_lock_screen(
 
     # Apply to detected lock screen
     backend = detect_lock_screen_backend()
-    success = apply_to_lock_screen(processed_path, backend=backend)
-    return success
+    return apply_to_lock_screen(processed_path, backend=backend)
+
+
+def get_lock_screen_status(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Returns a dictionary summary of lock screen sync status."""
+    if config is None:
+        config = load_config()
+    lock_cfg = config.get("display", {}).get("lock_screen", {})
+    backend = detect_lock_screen_backend()
+    lock_file = get_cache_dir() / "lockscreen.png"
+    return {
+        "enabled": lock_cfg.get("enabled", True),
+        "backend": backend,
+        "effect": lock_cfg.get("effect", "none"),
+        "blur_radius": lock_cfg.get("blur_radius", 15),
+        "dim_opacity": lock_cfg.get("dim_opacity", 0.4),
+        "file": str(lock_file),
+        "file_exists": lock_file.exists(),
+    }
