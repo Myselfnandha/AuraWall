@@ -151,6 +151,18 @@ def run_tray():
                 fav_item.connect("activate", self._toggle_favorite)
                 self.menu.append(fav_item)
 
+                p_url = curr.get("photographer_url") or curr.get("url")
+                curr_file = curr.get("file_path")
+                if curr_file and Path(curr_file).exists():
+                    open_img_item = Gtk.MenuItem(label="👁 View Full Image")
+                    open_img_item.connect("activate", lambda _: self._open_target(curr_file))
+                    self.menu.append(open_img_item)
+
+                if p_url and p_url.startswith("http"):
+                    link_item = Gtk.MenuItem(label="🌐 View Photo Online")
+                    link_item.connect("activate", lambda _, url=p_url: self._open_target(url))
+                    self.menu.append(link_item)
+
                 self.menu.append(Gtk.SeparatorMenuItem())
 
             # 2. Next Wallpaper
@@ -209,17 +221,29 @@ def run_tray():
 
             self.menu.append(Gtk.SeparatorMenuItem())
 
-            # 7. Open GUI Settings
+            # 7. Open Wallpaper Folder
+            folder_item = Gtk.MenuItem(label="📂 Open Cache Folder")
+            from awall.cache import get_default_cache_dir
+            folder_item.connect("activate", lambda _: self._open_target(str(get_default_cache_dir())))
+            self.menu.append(folder_item)
+
+            # 8. Open GUI Settings
             settings_item = Gtk.MenuItem(label="⚙ Settings Panel...")
             settings_item.connect("activate", self._open_settings)
             self.menu.append(settings_item)
 
-            # 8. Quit Tray
+            # 9. Quit Tray
             quit_item = Gtk.MenuItem(label="🚪 Quit Tray Icon")
             quit_item.connect("activate", self._on_quit)
             self.menu.append(quit_item)
 
             self.menu.show_all()
+
+        def _open_target(self, target: str):
+            try:
+                subprocess.Popen(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"[awall] Notice: Could not open {target} ({e})")
 
         def _on_quit(self, _):
             self.rotation_mgr.stop()
@@ -248,6 +272,7 @@ def run_tray():
             if curr:
                 new_state = not curr.get("is_favorite", False)
                 self.history_mgr.mark_favorite(file_path_or_id=curr.get("id"), is_fav=new_state)
+            GLib.idle_add(self.build_menu)
             self.build_menu()
 
         def _toggle_pause(self, _):

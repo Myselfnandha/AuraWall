@@ -281,6 +281,25 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         cache_spin_row.connect("notify::value", _on_cache_limit_change)
         cache_group.add(cache_spin_row)
 
+        open_cache_row = Adw.ActionRow()
+        open_cache_row.set_title("Open Cache Folder")
+        open_cache_row.set_subtitle("Browse downloaded and cached wallpapers in file manager")
+        open_cache_btn = Gtk.Button(label="Open Folder")
+        open_cache_btn.set_valign(Gtk.Align.CENTER)
+        open_cache_btn.add_css_class("flat")
+
+        def _on_open_cache_click(_):
+            import subprocess
+            from awall.cache import get_default_cache_dir
+            try:
+                subprocess.Popen(["xdg-open", str(get_default_cache_dir())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+        open_cache_btn.connect("clicked", _on_open_cache_click)
+        open_cache_row.add_suffix(open_cache_btn)
+        cache_group.add(open_cache_row)
+
         # 4. Notifications Group
         notif_cfg = self.config.setdefault("notifications", {})
         notif_group = Adw.PreferencesGroup()
@@ -363,3 +382,23 @@ class GeneralSettingsPage(Adw.PreferencesPage):
 
         app_row.connect("notify::active", _on_app_menu_change)
         system_group.add(app_row)
+
+        # Config Folder Row
+        open_config_row = Adw.ActionRow()
+        open_config_row.set_title("Configuration Directory")
+        open_config_row.set_subtitle("Open ~/.config/auto_wall in file manager")
+        open_config_btn = Gtk.Button(label="Open Config")
+        open_config_btn.set_valign(Gtk.Align.CENTER)
+        open_config_btn.add_css_class("flat")
+
+        def _on_open_config_click(_):
+            import subprocess
+            from awall.config import get_config_dir
+            try:
+                subprocess.Popen(["xdg-open", str(get_config_dir())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+        open_config_btn.connect("clicked", _on_open_config_click)
+        open_config_row.add_suffix(open_config_btn)
+        system_group.add(open_config_row)

@@ -27,17 +27,20 @@ class LocalSource(WallpaperSource):
         if not paths:
             paths = ["~/Pictures/Wallpapers", "~/Pictures"]
 
-        valid_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
+        valid_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".avif"}
         images: List[Path] = []
 
         for p_str in paths:
             expanded = Path(os.path.expanduser(p_str)).resolve()
-            if expanded.exists() and expanded.is_dir():
-                for root, _, files in os.walk(expanded):
-                    for file in files:
-                        p = Path(root) / file
-                        if p.suffix.lower() in valid_exts:
-                            images.append(p)
+            if expanded.exists():
+                if expanded.is_file() and expanded.suffix.lower() in valid_exts:
+                    images.append(expanded)
+                elif expanded.is_dir():
+                    for root, _, files in os.walk(expanded):
+                        for file in files:
+                            p = Path(root) / file
+                            if p.suffix.lower() in valid_exts:
+                                images.append(p)
 
         if not images:
             raise FileNotFoundError("No local wallpaper images found in configured paths")
@@ -59,5 +62,5 @@ class LocalSource(WallpaperSource):
             local_path=str(chosen),
             width=width,
             height=height,
-            description=chosen.name,
+            description=chosen.stem.replace("_", " ").title(),
         )
