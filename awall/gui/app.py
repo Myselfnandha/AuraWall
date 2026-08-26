@@ -8,12 +8,42 @@ import sys
 from awall.gui import is_gui_available
 
 
+def is_tray_running() -> bool:
+    """Checks if the awall tray process is currently active."""
+    try:
+        import subprocess
+        out = subprocess.check_output(["pgrep", "-f", "awall.*tray"]).decode("utf-8")
+        return bool(out.strip())
+    except Exception:
+        return False
+
+
+def ensure_tray_running():
+    """Spawns the awall tray process in the background if not already running."""
+    if not is_tray_running():
+        try:
+            import os, shutil, subprocess, sys
+            which_awall = shutil.which("awall")
+            cmd = [which_awall, "tray"] if which_awall else [sys.executable, "-m", "awall", "tray"]
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as e:
+            print(f"[awall] Notice: Could not autostart tray ({e})")
+
+
 def launch_gui(argv=None) -> int:
     """Launches the GTK4/Libadwaita graphical configuration window."""
     if not is_gui_available():
         print("[awall] GTK4 or Libadwaita is not installed.")
         print("Please install 'python-gobject', 'gtk4', and 'libadwaita' to launch the application.")
         return 1
+
+    # Ensure background system tray is active
+    ensure_tray_running()
 
     import gi
     gi.require_version("Gtk", "4.0")

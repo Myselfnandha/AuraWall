@@ -102,13 +102,10 @@ def install_desktop_app() -> bool:
         app_file = get_desktop_file()
         app_file.write_text(generate_desktop_entry_content(), encoding="utf-8")
         
-        # Also create awall.desktop alias for desktop launchers
+        # Clean up any legacy awall.desktop duplicate file
         alt_app_file = get_applications_dir() / "awall.desktop"
-        if not alt_app_file.exists():
-            try:
-                alt_app_file.symlink_to(app_file.name)
-            except Exception:
-                alt_app_file.write_text(generate_desktop_entry_content(), encoding="utf-8")
+        if alt_app_file.exists():
+            alt_app_file.unlink()
 
         # 2. Install application icons
         assets_dir = Path(__file__).parent / "assets"
