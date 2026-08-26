@@ -40,16 +40,22 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_next(args: argparse.Namespace) -> int:
-    """Forces an immediate switch to the next wallpaper."""
-    print(f"{CYAN}Fetching next wallpaper...{RESET}")
+    """Fetches and sets the next wallpaper."""
     config = load_config()
     force_topic = getattr(args, "topic", None)
     force_source = getattr(args, "source", None)
+    force = getattr(args, "force", False)
+
+    # Check if rotation is paused
+    if config.get("paused", False) and not force:
+        print(f"{YELLOW}⏸ Wallpaper rotation is currently PAUSED. (Use 'awall next -f' to force or 'awall resume' to resume){RESET}")
+        return 0
+
     success = change_wallpaper(
-        config,
+        config=config,
         force_topic=force_topic,
         force_source=force_source,
-        ignore_pause=True,
+        ignore_pause=force,
     )
     return 0 if success else 1
 
@@ -452,6 +458,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_next = subparsers.add_parser("next", aliases=["run", "rotate", "cycle"], help="Rotate to next wallpaper")
     p_next.add_argument("-t", "--topic", help="Specific topic to fetch")
     p_next.add_argument("-s", "--source", choices=["wallhaven", "bing", "unsplash", "pexels", "pixabay", "reddit", "local"], help="Force specific source")
+    p_next.add_argument("-f", "--force", action="store_true", help="Force rotation even if rotation is paused")
     p_next.set_defaults(func=cmd_next)
 
     p_prev = subparsers.add_parser("prev", help="Revert to previous wallpaper in history")

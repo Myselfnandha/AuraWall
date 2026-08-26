@@ -157,6 +157,15 @@ class SmartRotationWatcher:
             self.last_change_time = time.time()
             self._arm_timer_if_needed()
 
+    def update_pause_state(self):
+        """Re-evaluates paused state immediately and stops/arms timer accordingly."""
+        with self._lock:
+            config = load_config()
+            if config.get("paused", False):
+                self._cancel_timer()
+            else:
+                self._arm_timer_if_needed()
+
     def start(self):
         """Starts the event-driven watcher thread."""
         with self._lock:

@@ -292,6 +292,8 @@ def run_tray():
             self.config = load_config()
             self.config["paused"] = not self.config.get("paused", False)
             save_config(self.config)
+            if hasattr(self, "rotation_mgr"):
+                self.rotation_mgr.update_pause_state()
             self.build_menu()
 
         def _set_source(self, _, source_id: str):

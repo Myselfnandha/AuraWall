@@ -35,6 +35,19 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         sched_group.set_title("Rotation Schedule")
         self.add(sched_group)
 
+        # Master Pause Switch
+        pause_row = Adw.SwitchRow()
+        pause_row.set_title("Pause Automatic Rotation")
+        pause_row.set_subtitle("Temporarily stop all scheduled and background wallpaper changes")
+        pause_row.set_active(self.config.get("paused", False))
+
+        def _on_pause_change(row, gparam):
+            self.config["paused"] = row.get_active()
+            self.on_change()
+
+        pause_row.connect("notify::active", _on_pause_change)
+        sched_group.add(pause_row)
+
         interval_row = Adw.ComboRow()
         interval_row.set_title("Rotation Interval")
         model = Gtk.StringList()
