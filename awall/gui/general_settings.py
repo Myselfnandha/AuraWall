@@ -213,6 +213,46 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         lock_sync_row.connect("notify::active", _on_lock_sync_change)
         lock_group.add(lock_sync_row)
 
+        # Rotate on Sign-in / Unlock toggle
+        unlock_rotate_row = Adw.SwitchRow()
+        unlock_rotate_row.set_title("Rotate Lock Screen on Sign-in / Unlock")
+        unlock_rotate_row.set_subtitle("Change the lock screen wallpaper once every time you unlock or sign in")
+        unlock_rotate_row.set_active(lock_cfg.get("rotate_on_unlock", True))
+
+        def _on_unlock_rotate_change(row, gparam):
+            lock_cfg["rotate_on_unlock"] = row.get_active()
+            self.on_change()
+
+        unlock_rotate_row.connect("notify::active", _on_unlock_rotate_change)
+        lock_group.add(unlock_rotate_row)
+
+        # Unlock rotation mode selector
+        unlock_mode_row = Adw.ComboRow()
+        unlock_mode_row.set_title("Unlock Rotation Strategy")
+        unlock_mode_row.set_subtitle("How to select the new lock screen wallpaper on sign-in")
+        unlock_model = Gtk.StringList()
+        unlock_modes = [
+            ("independent", "Independent New Wallpaper (Fresh Image)"),
+            ("sync_desktop", "Sync with Desktop Wallpaper (Rotate Both)"),
+            ("favorites_cache", "Pick from Favorites & Local Cache"),
+        ]
+        for _, u_label in unlock_modes:
+            unlock_model.append(u_label)
+        unlock_mode_row.set_model(unlock_model)
+
+        u_keys = [k for k, _ in unlock_modes]
+        cur_um = lock_cfg.get("unlock_mode", "independent")
+        unlock_mode_row.set_selected(u_keys.index(cur_um) if cur_um in u_keys else 0)
+
+        def _on_unlock_mode_change(row, gparam):
+            sel = row.get_selected()
+            if 0 <= sel < len(u_keys):
+                lock_cfg["unlock_mode"] = u_keys[sel]
+                self.on_change()
+
+        unlock_mode_row.connect("notify::selected", _on_unlock_mode_change)
+        lock_group.add(unlock_mode_row)
+
         effect_row = Adw.ComboRow()
         effect_row.set_title("Lock Screen Visual Effect")
         effect_row.set_subtitle("Apply blur or dark dimming overlay for better lock dialog readability")

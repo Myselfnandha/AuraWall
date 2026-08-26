@@ -253,6 +253,8 @@ def get_lock_screen_status(config: Optional[Dict[str, Any]] = None) -> Dict[str,
     lock_file = get_cache_dir() / "lockscreen.png"
     return {
         "enabled": lock_cfg.get("enabled", True),
+        "rotate_on_unlock": lock_cfg.get("rotate_on_unlock", True),
+        "unlock_mode": lock_cfg.get("unlock_mode", "independent"),
         "backend": backend,
         "effect": lock_cfg.get("effect", "none"),
         "blur_radius": lock_cfg.get("blur_radius", 15),
@@ -260,3 +262,9 @@ def get_lock_screen_status(config: Optional[Dict[str, Any]] = None) -> Dict[str,
         "file": str(lock_file),
         "file_exists": lock_file.exists(),
     }
+
+
+def rotate_lock_screen_on_unlock(config: Optional[Dict[str, Any]] = None) -> bool:
+    """Convenience wrapper calling lock_listener.rotate_lock_screen_on_unlock."""
+    from awall.lock_listener import rotate_lock_screen_on_unlock as _rotate
+    return _rotate(config)

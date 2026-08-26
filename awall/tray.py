@@ -113,6 +113,11 @@ def run_tray():
             self.rotation_mgr = SmartRotationManager(on_trigger_callback=self._async_auto_rotate)
             self.rotation_mgr.start()
 
+            # DBus LockScreen event listener for sign-in / unlock rotation
+            from awall.lock_listener import LockScreenEventListener
+            self.lock_listener = LockScreenEventListener()
+            self.lock_listener.start()
+
         def _on_status_icon_popup(self, icon, button, time):
             self.build_menu()
             self.menu.show_all()
@@ -247,6 +252,8 @@ def run_tray():
 
         def _on_quit(self, _):
             self.rotation_mgr.stop()
+            if hasattr(self, "lock_listener"):
+                self.lock_listener.stop()
             Gtk.main_quit()
 
         def _on_next(self, _):

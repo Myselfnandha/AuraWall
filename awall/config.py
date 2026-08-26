@@ -106,6 +106,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "transition_duration_ms": 500,
         "lock_screen": {
             "enabled": True,
+            "rotate_on_unlock": True,  # Change lockscreen wallpaper once each time sign-in / unlock completes
+            "unlock_mode": "independent",  # "independent", "sync_desktop", "favorites_cache"
             "effect": "none",  # "none", "blur", "dim"
             "blur_radius": 15,  # 1 to 30
             "dim_opacity": 0.4,  # 0.0 to 1.0
