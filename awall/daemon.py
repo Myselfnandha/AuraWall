@@ -91,50 +91,68 @@ def change_wallpaper(
     wallpaper_info = None
     topic_used = topic_query or force_topic or ""
     is_offline = False
-
-    # Attempt fetching from sources
-    try:
-        wallpaper_info, topic_used = fetch_wallpaper_from_chain(config, topic_override=topic_query)
-    except Exception as e:
-        print(f"[awall] Notice: Online fetch failed ({e}). Attempting offline cache fallback.")
-        is_offline = True
-
     downloaded_file: Optional[Path] = None
 
-    if wallpaper_info and not is_offline:
+    # Fast-Path: Check smart prefetch queue for instantaneous (<50ms) rotation
+    from awall.prefetch import PrefetchManager
+    prefetch_mgr = PrefetchManager.get_default()
+
+    prefetched = None
+    if not force_topic and not force_source:
+        prefetched = prefetch_mgr.pop_prefetched(config=config)
+
+    if prefetched and Path(prefetched.get("file_path", "")).exists():
+        downloaded_file = Path(prefetched["file_path"])
+        photographer = prefetched.get("photographer", "Unknown")
+        photographer_url = prefetched.get("photographer_url", "")
+        source_name = prefetched.get("source_name", "online")
+        topic_used = prefetched.get("topic", "wallpapers")
+        url = prefetched.get("url", "")
+    else:
+        # Attempt fetching from sources
         try:
-            if wallpaper_info.source_name == "local" and wallpaper_info.local_path:
-                downloaded_file = cache_mgr.save_local_copy(
-                    wallpaper_info.local_path, source_prefix="local"
-                )
-            else:
-                downloaded_file = cache_mgr.download_image(
-                    wallpaper_info.url, source_prefix=wallpaper_info.source_name
-                )
+            wallpaper_info, topic_used = fetch_wallpaper_from_chain(config, topic_override=topic_query)
         except Exception as e:
-            print(f"[awall] Error downloading wallpaper ({e}). Falling back to cache.")
+            print(f"[awall] Notice: Online fetch failed ({e}). Attempting offline cache fallback.")
             is_offline = True
 
-    # Offline fallback
-    if is_offline or not downloaded_file:
-        downloaded_file = cache_mgr.get_offline_wallpaper(exclude_path=old_path)
-        if not downloaded_file:
-            err_msg = "No internet connection and no cached wallpapers available."
-            print(f"[awall] Error: {err_msg}")
-            send_error_notification(err_msg)
-            return False
+        if wallpaper_info and not is_offline:
+            try:
+                if wallpaper_info.source_name == "local" and wallpaper_info.local_path:
+                    downloaded_file = cache_mgr.save_local_copy(
+                        wallpaper_info.local_path, source_prefix="local"
+                    )
+                else:
+                    downloaded_file = cache_mgr.download_image(
+                        wallpaper_info.url, source_prefix=wallpaper_info.source_name
+                    )
+            except Exception as e:
+                print(f"[awall] Error downloading wallpaper ({e}). Falling back to cache.")
+                is_offline = True
 
-        # Build offline info
-        photographer = "Cached"
-        photographer_url = ""
-        source_name = "cache"
-        topic_used = "offline"
-        url = ""
-    else:
-        photographer = wallpaper_info.photographer
-        photographer_url = wallpaper_info.photographer_url
-        source_name = wallpaper_info.source_name
-        url = wallpaper_info.url
+        # Offline fallback
+        if is_offline or not downloaded_file:
+            downloaded_file = cache_mgr.get_offline_wallpaper(exclude_path=old_path)
+            if not downloaded_file:
+                err_msg = "No internet connection and no cached wallpapers available."
+                print(f"[awall] Error: {err_msg}")
+                send_error_notification(err_msg)
+                return False
+
+            # Build offline info
+            photographer = "Cached"
+            photographer_url = ""
+            source_name = "cache"
+            topic_used = "offline"
+            url = ""
+        else:
+            photographer = wallpaper_info.photographer
+            photographer_url = wallpaper_info.photographer_url
+            source_name = wallpaper_info.source_name
+            url = wallpaper_info.url
+
+        # Prime prefetch buffer in background for subsequent rotations
+        prefetch_mgr.trigger_prefetch(config=config)
 
     # Multi-monitor per-display or unified mode
     multi_mon_mode = display_cfg.get("multi_monitor", "unified")

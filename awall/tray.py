@@ -124,6 +124,10 @@ def run_tray():
             self.lock_listener = LockScreenEventListener()
             self.lock_listener.start()
 
+            # Prime smart prefetch buffer in background for instantaneous Next Wallpaper clicks
+            from awall.prefetch import PrefetchManager
+            PrefetchManager.get_default().trigger_prefetch(self.config)
+
         def _on_status_icon_popup(self, icon, button, time):
             self.build_menu()
             self.menu.show_all()
