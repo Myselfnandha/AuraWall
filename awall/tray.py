@@ -128,6 +128,38 @@ def run_tray():
             from awall.prefetch import PrefetchManager
             PrefetchManager.get_default().trigger_prefetch(self.config)
 
+            # Start 1-second live countdown timer update loop
+            GLib.timeout_add_seconds(1, self._update_timer_display)
+
+        def _update_timer_display(self) -> bool:
+            try:
+                remaining, is_paused, disp_text = self.rotation_mgr.get_remaining_time_sec()
+                if is_paused:
+                    label_text = " ⏸"
+                    tooltip_text = "awall Wallpaper Engine — ⏸ Rotation Paused"
+                elif disp_text == "In App":
+                    label_text = " ⏸"
+                    tooltip_text = "awall — Paused while apps are active"
+                else:
+                    label_text = f" {disp_text}"
+                    tooltip_text = f"awall Wallpaper Engine — Next in {disp_text}"
+
+                if self.indicator:
+                    self.indicator.set_label(label_text, " 00:00")
+                elif self.status_icon:
+                    self.status_icon.set_tooltip_text(tooltip_text)
+
+                if hasattr(self, "countdown_item") and self.countdown_item:
+                    if is_paused:
+                        self.countdown_item.set_label("⏸ Rotation Paused")
+                    elif disp_text == "In App":
+                        self.countdown_item.set_label("⏸ Paused (Application Active)")
+                    else:
+                        self.countdown_item.set_label(f"⏱ Next Change in: {disp_text}")
+            except Exception:
+                pass
+            return True
+
         def _on_status_icon_popup(self, icon, button, time):
             self.build_menu()
             self.menu.show_all()
@@ -152,6 +184,14 @@ def run_tray():
 
             self.config = load_config()
             curr = self.history_mgr.get_current()
+
+            # 0. Live Countdown Timer Header
+            remaining, is_paused, disp_text = self.rotation_mgr.get_remaining_time_sec()
+            timer_label = "⏸ Rotation Paused" if is_paused else (f"⏱ Next Change in: {disp_text}" if disp_text != "In App" else "⏸ Paused (Application Active)")
+            self.countdown_item = Gtk.MenuItem(label=timer_label)
+            self.countdown_item.set_sensitive(False)
+            self.menu.append(self.countdown_item)
+            self.menu.append(Gtk.SeparatorMenuItem())
 
             # 1. Header Info item
             if curr:

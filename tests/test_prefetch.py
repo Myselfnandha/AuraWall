@@ -83,6 +83,42 @@ class TestPrefetch(unittest.TestCase):
             self.assertTrue(success)
             mock_set_wall.assert_called_once()
 
+    def test_multi_slot_queue(self):
+        # Add 3 items to queue
+        items = []
+        for i in range(3):
+            f = self.cache_dir / f"wall_{i}.jpg"
+            img = Image.new("RGB", (50, 50), color="red")
+            img.save(f, "JPEG")
+            items.append({
+                "file_path": str(f),
+                "photographer": f"Artist {i}",
+                "url": f"https://example.com/{i}.jpg",
+                "source_name": "bing",
+                "topic": "nature",
+                "timestamp": time.time(),
+            })
+
+        self.mgr._write_queue(items)
+        self.assertEqual(self.mgr.get_queue_length(), 3)
+
+        p1 = self.mgr.pop_prefetched()
+        self.assertEqual(p1["photographer"], "Artist 0")
+        self.assertEqual(self.mgr.get_queue_length(), 2)
+
+        p2 = self.mgr.pop_prefetched()
+        self.assertEqual(p2["photographer"], "Artist 1")
+        self.assertEqual(self.mgr.get_queue_length(), 1)
+
+    def test_instant_fallback(self):
+        f = self.cache_dir / "cached_fallback.jpg"
+        img = Image.new("RGB", (50, 50), color="green")
+        img.save(f, "JPEG")
+
+        fallback = self.mgr.get_instant_fallback()
+        self.assertIsNotNone(fallback)
+        self.assertEqual(fallback["source_name"], "cache")
+
 
 if __name__ == "__main__":
     unittest.main()

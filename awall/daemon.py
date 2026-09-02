@@ -100,6 +100,11 @@ def change_wallpaper(
     prefetched = None
     if not force_topic and not force_source:
         prefetched = prefetch_mgr.pop_prefetched(config=config)
+        # If queue is depleted due to rapid clicking, grab instant fallback without network delay
+        if not prefetched:
+            prefetched = prefetch_mgr.get_instant_fallback(exclude_path=old_path)
+            if prefetched:
+                prefetch_mgr.trigger_prefetch(config=config)
 
     if prefetched and Path(prefetched.get("file_path", "")).exists():
         downloaded_file = Path(prefetched["file_path"])

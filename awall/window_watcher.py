@@ -208,6 +208,26 @@ class SmartRotationWatcher:
         interval_min = sched_cfg.get("interval_minutes", 5)
         return max(10, interval_min * 60)
 
+    def get_remaining_time_sec(self) -> Tuple[int, bool, str]:
+        """
+        Returns (remaining_seconds, is_paused, display_text).
+        display_text is e.g. '04:32', '00:00', 'Paused', or 'In App'.
+        """
+        config = load_config()
+        if config.get("paused", False):
+            return 0, True, "Paused"
+
+        pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
+        if pause_on_window and not self.was_desktop:
+            return 0, False, "In App"
+
+        interval_sec = self._get_interval_sec()
+        now = time.time()
+        elapsed = now - self.last_change_time
+        remaining = max(0, int(interval_sec - elapsed))
+        mins, secs = divmod(remaining, 60)
+        return remaining, False, f"{mins:02d}:{secs:02d}"
+
     def _cancel_timer(self):
         if self._timer:
             self._timer.cancel()
