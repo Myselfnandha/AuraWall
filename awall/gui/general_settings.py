@@ -42,8 +42,17 @@ class GeneralSettingsPage(Adw.PreferencesPage):
         pause_row.set_active(self.config.get("paused", False))
 
         def _on_pause_change(row, gparam):
-            self.config["paused"] = row.get_active()
+            is_active = row.get_active()
+            self.config["paused"] = is_active
             self.on_change()
+            try:
+                import subprocess
+                status = self.svc_mgr.get_status()
+                if status.get("installed"):
+                    cmd = "stop" if is_active else "start"
+                    subprocess.run(["systemctl", "--user", cmd, "awall.timer"], check=False)
+            except Exception:
+                pass
 
         pause_row.connect("notify::active", _on_pause_change)
         sched_group.add(pause_row)

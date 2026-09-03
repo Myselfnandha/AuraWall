@@ -128,11 +128,23 @@ def run_tray():
             from awall.prefetch import PrefetchManager
             PrefetchManager.get_default().trigger_prefetch(self.config)
 
+            # Track config file mtime for instant cross-process synchronization
+            self._last_config_mtime = 0.0
+
             # Start 1-second live countdown timer update loop
             GLib.timeout_add_seconds(1, self._update_timer_display)
 
         def _update_timer_display(self) -> bool:
             try:
+                # Live cross-process config synchronization (GUI <-> Tray <-> CLI)
+                config_file = Path.home() / ".config" / "awall" / "config.yaml"
+                if config_file.exists():
+                    mtime = config_file.stat().st_mtime
+                    if mtime != self._last_config_mtime:
+                        self._last_config_mtime = mtime
+                        self.config = load_config()
+                        self.rotation_mgr.update_pause_state()
+
                 remaining, is_paused, disp_text = self.rotation_mgr.get_remaining_time_sec()
                 if is_paused:
                     label_text = " ⏸"

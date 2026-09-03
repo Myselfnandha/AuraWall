@@ -11,9 +11,11 @@ from awall.gui import is_gui_available
 def is_tray_running() -> bool:
     """Checks if the awall tray process is currently active."""
     try:
-        import subprocess
+        import os, subprocess
+        my_pid = os.getpid()
         out = subprocess.check_output(["pgrep", "-f", "awall.*tray"]).decode("utf-8")
-        return bool(out.strip())
+        pids = [int(p.strip()) for p in out.strip().split() if p.strip() and int(p.strip()) != my_pid]
+        return len(pids) > 0
     except Exception:
         return False
 
@@ -22,11 +24,14 @@ def ensure_tray_running():
     """Spawns the awall tray process in the background if not already running."""
     if not is_tray_running():
         try:
-            import os, shutil, subprocess, sys
-            which_awall = shutil.which("awall")
-            cmd = [which_awall, "tray"] if which_awall else [sys.executable, "-m", "awall", "tray"]
+            import os, subprocess, sys
+            env = os.environ.copy()
+            if "DISPLAY" not in env:
+                env["DISPLAY"] = ":0.0"
+            cmd = [sys.executable, "-m", "awall", "tray"]
             subprocess.Popen(
                 cmd,
+                env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
