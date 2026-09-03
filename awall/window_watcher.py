@@ -92,22 +92,23 @@ def check_active_window_state() -> Tuple[bool, bool]:
             if "_NET_WM_WINDOW_TYPE_DESKTOP" in wout:
                 return True, False
 
-            desktop_classes = {
-                "xfdesktop",
-                "desktop",
-                "nautilus",
-                "nemo",
-                "caja",
-                "pcmanfm",
-                "plasma-desktop",
-                "plasmashell",
-                "gnome-shell",
-                "kded5",
-                "kded6",
-            }
-            wout_lower = wout.lower()
-            for dc in desktop_classes:
-                if dc in wout_lower:
+            # Check exact WM_CLASS strings (never match substring of paths like /home/user/Desktop)
+            match_cls = re.search(r"WM_CLASS.*?=\s*(.*)", wout)
+            if match_cls:
+                raw_classes = match_cls.group(1)
+                classes = {c.strip().strip('"').lower() for c in raw_classes.split(",")}
+                desktop_classes = {
+                    "xfdesktop",
+                    "nautilus",
+                    "nemo-desktop",
+                    "caja-desktop",
+                    "pcmanfm",
+                    "pcmanfm-qt",
+                    "plasma-desktop",
+                    "plasmashell",
+                    "gnome-shell",
+                }
+                if classes.intersection(desktop_classes):
                     return True, False
 
             is_fullscreen = "_NET_WM_STATE_FULLSCREEN" in wout

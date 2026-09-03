@@ -3,11 +3,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "awall"
+name = "aurawall"
 version = "0.1.0"
-description = "Free Automatic Wallpaper Engine for Arch Linux & beyond"
+description = "🌌 Next-generation wallpaper engine & desktop ambiance daemon for Linux"
 readme = "README.md"
-authors = [{ name = "awall contributors", email = "awall@example.com" }]
+authors = [{ name = "Myselfnandha", email = "nandha@users.noreply.github.com" }]
 license = { text = "MIT" }
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,7 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Desktop Environment",
 ]
-keywords = ["wallpaper", "unsplash", "pexels", "pixabay", "reddit", "arch-linux", "hyprland", "sway", "xfce", "gnome", "kde"]
+keywords = ["wallpaper", "wallpaper-engine", "wallhaven", "bing", "unsplash", "arch-linux", "hyprland", "sway", "xfce", "gnome", "kde"]
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
@@ -39,12 +39,14 @@ dev = [
 ]
 
 [project.scripts]
+aurawall = "awall.cli:main"
 awall = "awall.cli:main"
 
 [project.gui-scripts]
+aurawall = "awall.cli:main"
 awall = "awall.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/user/awall"
-Repository = "https://github.com/user/awall"
-"Bug Tracker" = "https://github.com/user/awall/issues"
+Homepage = "https://github.com/Myselfnandha/AuraWall"
+Repository = "https://github.com/Myselfnandha/AuraWall"
+"Bug Tracker" = "https://github.com/Myselfnandha/AuraWall/issues"

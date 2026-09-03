@@ -194,16 +194,20 @@ def run_tray():
                         self.config = load_config()
                         self.rotation_mgr.update_pause_state()
 
+                # Poll window focus state every second for instantaneous in-app pause
+                self.rotation_mgr.on_window_focus_changed()
+
                 remaining, is_paused, disp_text = self.rotation_mgr.get_remaining_time_sec()
                 if is_paused:
                     label_text = " ⏸"
-                    tooltip_text = "awall Wallpaper Engine — ⏸ Rotation Paused"
-                elif disp_text == "In App":
-                    label_text = " ⏸"
-                    tooltip_text = "awall — Paused while apps are active"
+                    tooltip_text = "AuraWall Wallpaper Engine — ⏸ Rotation Paused"
+                elif disp_text.startswith("⏸"):
+                    label_text = f" {disp_text}"
+                    clean_time = disp_text.lstrip("⏸").strip()
+                    tooltip_text = f"AuraWall — ⏸ Paused while application is active ({clean_time})"
                 else:
                     label_text = f" {disp_text}"
-                    tooltip_text = f"awall Wallpaper Engine — Next in {disp_text}"
+                    tooltip_text = f"AuraWall Wallpaper Engine — Next in {disp_text}"
 
                 if self.indicator:
                     self.indicator.set_label(label_text, " 00:00")
@@ -215,8 +219,9 @@ def run_tray():
                 if hasattr(self, "countdown_item") and self.countdown_item:
                     if is_paused:
                         self.countdown_item.set_label("⏸ Rotation Paused")
-                    elif disp_text == "In App":
-                        self.countdown_item.set_label("⏸ Paused (Application Active)")
+                    elif disp_text.startswith("⏸"):
+                        clean_time = disp_text.lstrip("⏸").strip()
+                        self.countdown_item.set_label(f"⏸ Paused (Application Active: {clean_time})")
                     else:
                         self.countdown_item.set_label(f"⏱ Next Change in: {disp_text}")
             except Exception:
