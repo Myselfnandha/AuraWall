@@ -79,7 +79,15 @@ class XfceBackend(WallpaperBackend):
 
             abs_path = str(image_path.resolve())
 
+            # If no image props found, synthesize standard XFCE properties
+            if not image_props:
+                image_props = [
+                    "/backdrop/screen0/monitor0/workspace0/last-image",
+                    "/backdrop/screen0/monitoreDP-1/workspace0/last-image",
+                ]
+
             for prop in image_props:
+                # Set wallpaper path
                 subprocess.run(
                     ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", abs_path, "--create", "-t", "string"],
                     check=False,
@@ -87,9 +95,19 @@ class XfceBackend(WallpaperBackend):
                     stderr=subprocess.DEVNULL,
                 )
 
-            for prop in style_props:
+                # Ensure image-style is set as integer (5=Zoomed/Fill)
+                style_prop = prop.replace("last-image", "image-style").replace("image-path", "image-style")
                 subprocess.run(
-                    ["xfconf-query", "-c", "xfce4-desktop", "-p", prop, "-s", style_val, "--create", "-t", "string"],
+                    ["xfconf-query", "-c", "xfce4-desktop", "-p", style_prop, "-s", str(style_val), "--create", "-t", "int"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+                # Disable XFCE's internal cycling timer on this workspace to prevent conflicts
+                cycle_prop = prop.replace("last-image", "backdrop-cycle-enable").replace("image-path", "backdrop-cycle-enable")
+                subprocess.run(
+                    ["xfconf-query", "-c", "xfce4-desktop", "-p", cycle_prop, "-s", "false", "--create", "-t", "bool"],
                     check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,

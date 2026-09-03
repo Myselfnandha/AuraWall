@@ -89,7 +89,7 @@ class UnsplashSource(WallpaperSource):
                     if img_url:
                         if "w=" not in img_url:
                             delimiter = "&" if "?" in img_url else "?"
-                            img_url += f"{delimiter}w=3840&q=85&fit=crop"
+                            img_url += f"{delimiter}w=3840&q=90&fit=max"
                         return WallpaperInfo(
                             url=img_url,
                             source_name="unsplash",
@@ -122,7 +122,7 @@ class UnsplashSource(WallpaperSource):
                     if img_url:
                         if "w=" not in img_url:
                             delimiter = "&" if "?" in img_url else "?"
-                            img_url += f"{delimiter}w=3840&q=85&fit=crop"
+                            img_url += f"{delimiter}w=3840&q=90&fit=max"
                         return WallpaperInfo(
                             url=img_url,
                             source_name="unsplash",

@@ -145,15 +145,22 @@ def run_tray():
             cr.set_source_rgba(0.08, 0.11, 0.16, 0.95)
             cr.fill_preserve()
             cr.set_line_width(1.0)
-            if is_paused:
+            text = disp_text.strip()
+            border_paused = is_paused
+            if text.startswith("⏸"):
+                parts = text.split(maxsplit=1)
+                if len(parts) > 1 and parts[1].strip():
+                    text = parts[1].strip()
+                    border_paused = True
+                else:
+                    text = "⏸"
+                    border_paused = True
+
+            if border_paused:
                 cr.set_source_rgba(0.9, 0.6, 0.2, 0.8)
             else:
                 cr.set_source_rgba(0.35, 0.7, 1.0, 0.8)
             cr.stroke()
-
-            text = disp_text.strip()
-            if text.startswith("⏸"):
-                text = "⏸"
 
             layout = PangoCairo.create_layout(cr)
             font_str = "Sans Bold 9" if len(text) <= 2 else "Sans Bold 7"

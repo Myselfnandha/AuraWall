@@ -79,13 +79,13 @@ def process_lock_wallpaper(
         print(f"[awall] Warning: Wallpaper image {image_path} does not exist for lock screen processing.")
         return out_path
 
-    # If no effect, copy / symlink directly
-    if effect == "none":
-        shutil.copyfile(image_path, out_path)
-        return out_path
-
     try:
         with Image.open(image_path) as img:
+            # If no effect, convert directly to PNG
+            if effect == "none":
+                img.convert("RGB").save(out_path, format="PNG", compress_level=1)
+                return out_path
+
             img = img.convert("RGBA")
 
             # 1. Apply Gaussian Blur if requested
@@ -104,7 +104,11 @@ def process_lock_wallpaper(
             return out_path
     except Exception as e:
         print(f"[awall] Warning: Lock screen effect processing failed ({e}). Using raw wallpaper.")
-        shutil.copyfile(image_path, out_path)
+        try:
+            with Image.open(image_path) as img:
+                img.convert("RGB").save(out_path, format="PNG", compress_level=1)
+        except Exception:
+            shutil.copyfile(image_path, out_path)
         return out_path
 
 
@@ -178,7 +182,6 @@ def apply_to_lock_screen(image_path: Path, backend: Optional[str] = None) -> boo
 
         # 4. Swaylock
         if b == "swaylock":
-            # Update swaylock config if it exists
             swaylock_conf = Path.home() / ".config" / "swaylock" / "config"
             if swaylock_conf.exists():
                 try:
@@ -198,14 +201,43 @@ def apply_to_lock_screen(image_path: Path, backend: Optional[str] = None) -> boo
             if hyprlock_conf.exists():
                 try:
                     text = hyprlock_conf.read_text(encoding="utf-8")
-                    # Replace path = ... in background blocks
                     new_text = re.sub(r"(path\s*=\s*).*", rf"\g<1>{abs_path}", text)
                     hyprlock_conf.write_text(new_text, encoding="utf-8")
                 except Exception:
                     pass
             return True
 
-        # 6. XFCE / Generic: Image is already saved in canonical ~/.cache/auto_wall/lockscreen.png
+        # 6. XFCE (xfce4-screensaver & lightdm-gtk-greeter)
+        if b == "xfce":
+            xfce_screensaver_dir = Path.home() / ".local" / "share" / "lockscreen-wallpapers"
+            xfce_screensaver_dir.mkdir(parents=True, exist_ok=True)
+            target_file = xfce_screensaver_dir / "lockscreen.png"
+            shutil.copy2(image_path, target_file)
+
+            bg_dir = Path.home() / ".local" / "share" / "backgrounds"
+            bg_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(image_path, bg_dir / "lockscreen.png")
+
+            if shutil.which("xfconf-query"):
+                subprocess.run(
+                    [
+                        "xfconf-query",
+                        "-c",
+                        "xfce4-screensaver",
+                        "-p",
+                        "/screensavers/xfce-slideshow/arguments",
+                        "-s",
+                        f"--location={xfce_screensaver_dir}",
+                        "--create",
+                        "-t",
+                        "string",
+                    ],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            return True
+
         return True
     except Exception as e:
         print(f"[awall] Error applying lock screen wallpaper: {e}")

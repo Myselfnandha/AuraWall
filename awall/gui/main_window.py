@@ -122,8 +122,7 @@ class MainWindow(Adw.PreferencesWindow):
         header_bar.pack_end(min_btn)
 
     def _on_config_changed(self):
-        """Auto-save config on any UI interaction and refresh gallery filter."""
+        """Auto-save config on UI interaction."""
         save_config(self.config)
         if hasattr(self, "gallery_page"):
             self.gallery_page.config = self.config
-            self.gallery_page.load_gallery()

@@ -47,6 +47,9 @@ class BingSource(WallpaperSource):
         if not raw_url:
             raise ValueError("Bing image entry missing URL")
 
+        # Upgrade to native 4K Ultra-HD stream
+        raw_url = raw_url.replace("1920x1080", "UHD")
+
         img_url = f"https://www.bing.com{raw_url}"
         if not img_url.startswith("http"):
             img_url = f"https://www.bing.com/{raw_url.lstrip('/')}"

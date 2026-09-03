@@ -244,19 +244,20 @@ class SmartRotationWatcher:
     def get_remaining_time_sec(self) -> Tuple[int, bool, str]:
         """
         Returns (remaining_seconds, is_paused, display_text).
-        display_text is e.g. '04:32', '⏸ 03:20', or 'Paused'.
+        display_text is e.g. '04:32', '⏸', or formatted time string.
         """
         config = load_config()
         if config.get("paused", False):
-            return 0, True, "Paused"
+            return 0, True, "⏸"
 
         rem_float = self._get_remaining_float()
         rem_sec = max(0, int(rem_float))
         mins, secs = divmod(rem_sec, 60)
 
+        is_fullscreen = getattr(self, "is_fullscreen", False)
         pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
-        if pause_on_window and not self.was_desktop:
-            tag = "⏸ Fullscreen" if getattr(self, "is_fullscreen", False) else "⏸ In App"
+
+        if is_fullscreen or (pause_on_window and not self.was_desktop):
             return rem_sec, False, f"⏸ {mins:02d}:{secs:02d}"
 
         return rem_sec, False, f"{mins:02d}:{secs:02d}"
@@ -266,19 +267,26 @@ class SmartRotationWatcher:
             self._timer.cancel()
             self._timer = None
 
+    def _is_effectively_paused(self, config: Optional[Dict[str, Any]] = None) -> bool:
+        """Returns True if rotation should currently be suspended."""
+        cfg = config or load_config()
+        if cfg.get("paused", False):
+            return True
+        if getattr(self, "is_fullscreen", False):
+            return True
+        pause_on_window = cfg.get("schedule", {}).get("pause_on_active_window", True)
+        if pause_on_window and not self.was_desktop:
+            return True
+        return False
+
     def _arm_timer_if_needed(self):
-        """Arms the timer only if on desktop and rotation is active."""
+        """Arms the timer if rotation is not paused."""
         self._cancel_timer()
         if not self.running:
             return
 
         config = load_config()
-        if config.get("paused", False):
-            return
-
-        pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
-        if pause_on_window and not self.was_desktop:
-            # Application / Fullscreen active -> Stay dormant with frozen timer!
+        if self._is_effectively_paused(config):
             return
 
         rem = self._get_remaining_float()
@@ -293,31 +301,23 @@ class SmartRotationWatcher:
         self._timer.start()
 
     def _on_timer_fired(self):
-        """Called when interval expires while on desktop."""
+        """Called when interval expires."""
         with self._lock:
             if not self.running:
                 return
 
             config = load_config()
-            if config.get("paused", False):
-                return
-
-            pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
-            is_desktop = self.check_desktop() if pause_on_window else True
-
-            if is_desktop:
-                self.last_change_time = time.time()
-                self.remaining_seconds = float(self._get_interval_sec())
-                self.active_desktop_start = time.time()
-                self.was_desktop = True
-                self.on_trigger()
-                self._arm_timer_if_needed()
-            else:
-                # App active -> mark overdue to trigger upon desktop return
-                self.was_desktop = False
+            if self._is_effectively_paused(config):
                 self.remaining_seconds = 0.0
                 self.active_desktop_start = None
                 self._cancel_timer()
+                return
+
+            self.last_change_time = time.time()
+            self.remaining_seconds = float(self._get_interval_sec())
+            self.active_desktop_start = time.time()
+            self.on_trigger()
+            self._arm_timer_if_needed()
 
     def on_window_focus_changed(self):
         """
@@ -332,103 +332,93 @@ class SmartRotationWatcher:
                 self._cancel_timer()
                 return
 
-            pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
-            if not pause_on_window:
-                return
-
             is_desktop, is_fullscreen = check_active_window_state() if self.check_desktop == check_is_desktop_active else (self.check_desktop(), False)
+            was_paused = self._is_effectively_paused(config)
             self.is_fullscreen = is_fullscreen
+            self.was_desktop = is_desktop
+            now_paused = self._is_effectively_paused(config)
 
-            if not is_desktop:
-                # Switched to Application / Fullscreen -> Freeze and hold remaining time!
-                if self.was_desktop:
-                    if self.active_desktop_start is not None:
-                        elapsed = time.time() - self.active_desktop_start
-                        self.remaining_seconds = max(0.0, self.remaining_seconds - elapsed)
-                        self.active_desktop_start = None
-                    self.was_desktop = False
-                    self._cancel_timer()
-                return
-
-            # Switched back to Desktop!
-            if not self.was_desktop:
-                self.was_desktop = True
+            if now_paused and not was_paused:
+                # Entering Fullscreen or Strict Pause -> Freeze countdown!
+                if self.active_desktop_start is not None:
+                    elapsed = time.time() - self.active_desktop_start
+                    self.remaining_seconds = max(0.0, self.remaining_seconds - elapsed)
+                    self.active_desktop_start = None
+                self._cancel_timer()
+            elif not now_paused and was_paused:
+                # Exiting Fullscreen -> Resume countdown seamlessly!
                 if self.remaining_seconds <= 0.0:
-                    # OVERDUE! Rotate immediately upon returning to desktop
                     self.last_change_time = time.time()
                     self.remaining_seconds = float(self._get_interval_sec())
                     self.active_desktop_start = time.time()
                     self.on_trigger()
                     self._arm_timer_if_needed()
                 else:
-                    # Continue countdown from frozen remaining time!
                     self.active_desktop_start = time.time()
                     self._arm_timer_if_needed()
 
     def _event_listener_loop(self):
         """
         Listens to system triggers (X11 event stream / Hyprland / Sway socket)
-        blocking on kernel socket without polling.
+        blocking on kernel socket without polling, auto-reconnecting on failure.
         """
-        # 1. Hyprland Event Socket
-        hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-        hypr_sock = f"/tmp/hypr/{hypr_sig}/.socket2.sock" if hypr_sig else ""
-        xdg_hypr = f"{os.environ.get('XDG_RUNTIME_DIR', '')}/hypr/{hypr_sig}/.socket2.sock" if hypr_sig else ""
-        chosen_sock = xdg_hypr if os.path.exists(xdg_hypr) else (hypr_sock if os.path.exists(hypr_sock) else None)
-
-        if chosen_sock and os.path.exists(chosen_sock):
-            try:
-                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                client.connect(chosen_sock)
-                with client.makefile("r", encoding="utf-8") as f:
-                    while self.running:
-                        line = f.readline()
-                        if not line:
-                            break
-                        if line.startswith("activewindow>>") or line.startswith("workspace>>"):
-                            self.on_window_focus_changed()
-                return
-            except Exception:
-                pass
-
-        # 2. Sway IPC Event Stream
-        if shutil.which("swaymsg") and os.environ.get("SWAYSOCK"):
-            try:
-                self._proc = subprocess.Popen(
-                    ["swaymsg", "-t", "subscribe", "-m", '["window", "workspace"]'],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    text=True,
-                )
-                while self.running and self._proc.poll() is None:
-                    line = self._proc.stdout.readline()
-                    if line:
-                        self.on_window_focus_changed()
-                return
-            except Exception:
-                pass
-
-        # 3. X11 via xprop -spy (System Event Hook)
-        if shutil.which("xprop") and (os.environ.get("DISPLAY") or not os.environ.get("WAYLAND_DISPLAY")):
-            try:
-                self._proc = subprocess.Popen(
-                    ["xprop", "-spy", "-root", "_NET_ACTIVE_WINDOW", "_NET_SHOWING_DESKTOP", "_NET_CURRENT_DESKTOP"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    text=True,
-                )
-                while self.running and self._proc.poll() is None:
-                    line = self._proc.stdout.readline()
-                    if line:
-                        self.on_window_focus_changed()
-                return
-            except Exception:
-                pass
-
-        # Fallback if no system trigger is available: check periodically
         while self.running:
-            time.sleep(2)
-            self.on_window_focus_changed()
+            # 1. Hyprland Event Socket
+            hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+            hypr_sock = f"/tmp/hypr/{hypr_sig}/.socket2.sock" if hypr_sig else ""
+            xdg_hypr = f"{os.environ.get('XDG_RUNTIME_DIR', '')}/hypr/{hypr_sig}/.socket2.sock" if hypr_sig else ""
+            chosen_sock = xdg_hypr if os.path.exists(xdg_hypr) else (hypr_sock if os.path.exists(hypr_sock) else None)
+
+            if chosen_sock and os.path.exists(chosen_sock):
+                try:
+                    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    client.connect(chosen_sock)
+                    with client.makefile("r", encoding="utf-8") as f:
+                        while self.running:
+                            line = f.readline()
+                            if not line:
+                                break
+                            if line.startswith("activewindow>>") or line.startswith("workspace>>"):
+                                self.on_window_focus_changed()
+                except Exception:
+                    pass
+
+            # 2. Sway IPC Event Stream
+            elif shutil.which("swaymsg") and os.environ.get("SWAYSOCK"):
+                try:
+                    self._proc = subprocess.Popen(
+                        ["swaymsg", "-t", "subscribe", "-m", '["window", "workspace"]'],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                    )
+                    while self.running and self._proc.poll() is None:
+                        line = self._proc.stdout.readline()
+                        if line:
+                            self.on_window_focus_changed()
+                except Exception:
+                    pass
+
+            # 3. X11 via xprop -spy (System Event Hook)
+            elif shutil.which("xprop") and (os.environ.get("DISPLAY") or not os.environ.get("WAYLAND_DISPLAY")):
+                try:
+                    self._proc = subprocess.Popen(
+                        ["xprop", "-spy", "-root", "_NET_ACTIVE_WINDOW", "_NET_SHOWING_DESKTOP", "_NET_CURRENT_DESKTOP"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                    )
+                    while self.running and self._proc.poll() is None:
+                        line = self._proc.stdout.readline()
+                        if line:
+                            self.on_window_focus_changed()
+                except Exception:
+                    pass
+
+            # Fallback / reconnection delay
+            if self.running:
+                time.sleep(2)
+                self.on_window_focus_changed()
 
 
 # Backward compatibility alias

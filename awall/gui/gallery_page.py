@@ -115,9 +115,9 @@ class WallpaperCard(Gtk.Button):
 
         self.set_child(card_box)
 
-    def set_thumbnail_file(self, thumb_path: Path):
+    def set_thumbnail_file(self, thumb_path: Optional[Path]):
         """Sets the loaded thumbnail image."""
-        if thumb_path.exists():
+        if thumb_path and thumb_path.exists():
             file_obj = Gio.File.new_for_path(str(thumb_path))
             self.picture.set_file(file_obj)
 
