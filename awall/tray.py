@@ -106,15 +106,6 @@ def run_tray():
                 self.status_icon.set_tooltip_text("awall Wallpaper Engine")
                 self.status_icon.set_visible(True)
 
-            self.menu = Gtk.Menu()
-            self.build_menu()
-
-            if self.indicator:
-                self.indicator.set_menu(self.menu)
-            elif self.status_icon:
-                self.status_icon.connect("popup-menu", self._on_status_icon_popup)
-                self.status_icon.connect("activate", self._on_status_icon_activate)
-
             # System-triggered smart active-window watcher & power-saving auto-rotator
             self.rotation_mgr = SmartRotationManager(on_trigger_callback=self._async_auto_rotate)
             self.rotation_mgr.start()
@@ -130,6 +121,15 @@ def run_tray():
 
             # Track config file mtime for instant cross-process synchronization
             self._last_config_mtime = 0.0
+
+            self.menu = Gtk.Menu()
+            self.build_menu()
+
+            if self.indicator:
+                self.indicator.set_menu(self.menu)
+            elif self.status_icon:
+                self.status_icon.connect("popup-menu", self._on_status_icon_popup)
+                self.status_icon.connect("activate", self._on_status_icon_activate)
 
             # Start 1-second live countdown timer update loop
             GLib.timeout_add_seconds(1, self._update_timer_display)
