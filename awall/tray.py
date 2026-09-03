@@ -79,12 +79,10 @@ def run_tray():
             self.status_icon = None
 
             assets_dir = (Path(__file__).parent / "assets").resolve()
-            tray_file = assets_dir / "tray-icon.png"
-            if not tray_file.exists():
-                tray_file = Path.home() / ".local" / "share" / "pixmaps" / "awall.png"
+            desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+            is_xfce = "XFCE" in desktop_env
 
-            # Prefer AppIndicator3 (StatusNotifierItem) for native right-side text without icon distortion
-            if AppInd:
+            if not is_xfce and AppInd:
                 self.indicator = AppInd.Indicator.new(
                     "awall-tray",
                     "tray-icon",
@@ -97,10 +95,8 @@ def run_tray():
                 self.indicator.set_status(AppInd.IndicatorStatus.ACTIVE)
             else:
                 self.status_icon = Gtk.StatusIcon()
-                if tray_file.exists():
-                    self.status_icon.set_from_file(str(tray_file))
-                else:
-                    self.status_icon.set_from_icon_name("preferences-desktop-wallpaper")
+                init_pix = self._render_square_timer_badge("05:00", False)
+                self.status_icon.set_from_pixbuf(init_pix)
                 self.status_icon.set_tooltip_text("awall Wallpaper Engine")
                 self.status_icon.set_visible(True)
 
@@ -131,6 +127,55 @@ def run_tray():
 
             # Start 1-second live countdown timer update loop
             GLib.timeout_add_seconds(1, self._update_timer_display)
+
+        def _render_square_timer_badge(self, disp_text: str, is_paused: bool = False) -> GdkPixbuf.Pixbuf:
+            """Renders a pristine 24x24 square digital timer badge with zero squishing or distortion."""
+            size = 24
+            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+            cr = cairo.Context(surface)
+            radius = 5
+            cr.new_sub_path()
+            cr.arc(size - radius, radius, radius, -1.57, 0)
+            cr.arc(size - radius, size - radius, radius, 0, 1.57)
+            cr.arc(radius, size - radius, radius, 1.57, 3.14)
+            cr.arc(radius, radius, radius, 3.14, 4.71)
+            cr.close_path()
+
+            # Dark background
+            cr.set_source_rgba(0.08, 0.11, 0.16, 0.95)
+            cr.fill_preserve()
+            cr.set_line_width(1.0)
+            if is_paused:
+                cr.set_source_rgba(0.9, 0.6, 0.2, 0.8)
+            else:
+                cr.set_source_rgba(0.35, 0.7, 1.0, 0.8)
+            cr.stroke()
+
+            text = disp_text.strip()
+            if text.startswith("⏸"):
+                text = "⏸"
+
+            layout = PangoCairo.create_layout(cr)
+            font_str = "Sans Bold 9" if len(text) <= 2 else "Sans Bold 7"
+            layout.set_font_description(Pango.FontDescription(font_str))
+            layout.set_text(text, -1)
+            tw, th = layout.get_pixel_size()
+
+            tx = (size - tw) // 2
+            ty = (size - th) // 2
+
+            # Drop shadow
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.8)
+            cr.move_to(tx + 1, ty + 1)
+            PangoCairo.show_layout(cr, layout)
+
+            # Crisp white
+            cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+            cr.move_to(tx, ty)
+            PangoCairo.show_layout(cr, layout)
+
+            return Gdk.pixbuf_get_from_surface(surface, 0, 0, size, size)
+
         def _update_timer_display(self) -> bool:
             try:
                 # Live cross-process config synchronization (GUI <-> Tray <-> CLI)
@@ -156,6 +201,8 @@ def run_tray():
                 if self.indicator:
                     self.indicator.set_label(label_text, " 00:00")
                 elif self.status_icon:
+                    pix = self._render_square_timer_badge(disp_text, is_paused)
+                    self.status_icon.set_from_pixbuf(pix)
                     self.status_icon.set_tooltip_text(tooltip_text)
 
                 if hasattr(self, "countdown_item") and self.countdown_item:
