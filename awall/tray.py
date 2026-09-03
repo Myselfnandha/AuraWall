@@ -48,7 +48,9 @@ def run_tray():
 
     import gi
     gi.require_version("Gtk", "3.0")
-    from gi.repository import GLib, Gtk
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango, PangoCairo
+    import cairo
 
     AppInd = None
     try:
@@ -134,6 +136,64 @@ def run_tray():
             # Start 1-second live countdown timer update loop
             GLib.timeout_add_seconds(1, self._update_timer_display)
 
+        def _render_composite_tray_pixbuf(self, disp_text: str) -> Optional[GdkPixbuf.Pixbuf]:
+            """
+            Renders a composite panel image with the base wallpaper icon on the left
+            and the remaining time text cleanly drawn on the right side.
+            """
+            try:
+                if not hasattr(self, "_base_icon_pixbuf") or not self._base_icon_pixbuf:
+                    assets_dir = (Path(__file__).parent / "assets").resolve()
+                    tray_file = assets_dir / "tray-icon.png"
+                    if not tray_file.exists():
+                        tray_file = Path.home() / ".local" / "share" / "pixmaps" / "awall.png"
+                    if tray_file.exists():
+                        self._base_icon_pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(tray_file), 20, 20, True)
+                    else:
+                        return None
+
+                text = disp_text.strip()
+                if not text:
+                    return self._base_icon_pixbuf
+
+                # Measure layout size
+                surface_tmp = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
+                cr_tmp = cairo.Context(surface_tmp)
+                layout_tmp = PangoCairo.create_layout(cr_tmp)
+                layout_tmp.set_font_description(Pango.FontDescription("Sans Bold 9"))
+                layout_tmp.set_text(text, -1)
+                text_w, text_h = layout_tmp.get_pixel_size()
+
+                total_w = 22 + text_w + 6
+                total_h = 24
+
+                surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, total_w, total_h)
+                cr = cairo.Context(surface)
+
+                # Draw base icon on left
+                Gdk.cairo_set_source_pixbuf(cr, self._base_icon_pixbuf, 1, (total_h - 20) // 2)
+                cr.paint()
+
+                # Draw text on right
+                layout = PangoCairo.create_layout(cr)
+                layout.set_font_description(Pango.FontDescription("Sans Bold 9"))
+                layout.set_text(text, -1)
+                ty = (total_h - text_h) // 2
+
+                # Subtle shadow for contrast on light/dark panels
+                cr.set_source_rgba(0.0, 0.0, 0.0, 0.75)
+                cr.move_to(23 + 1, ty + 1)
+                PangoCairo.show_layout(cr, layout)
+
+                # Crisp white text
+                cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+                cr.move_to(23, ty)
+                PangoCairo.show_layout(cr, layout)
+
+                return Gdk.pixbuf_get_from_surface(surface, 0, 0, total_w, total_h)
+            except Exception:
+                return None
+
         def _update_timer_display(self) -> bool:
             try:
                 # Live cross-process config synchronization (GUI <-> Tray <-> CLI)
@@ -159,6 +219,9 @@ def run_tray():
                 if self.indicator:
                     self.indicator.set_label(label_text, " 00:00")
                 elif self.status_icon:
+                    pix = self._render_composite_tray_pixbuf(disp_text)
+                    if pix:
+                        self.status_icon.set_from_pixbuf(pix)
                     self.status_icon.set_tooltip_text(tooltip_text)
 
                 if hasattr(self, "countdown_item") and self.countdown_item:
