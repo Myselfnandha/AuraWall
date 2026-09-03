@@ -30,7 +30,7 @@ def get_awall_executable() -> str:
 
 def generate_service_content() -> str:
     """Generates the systemd user service unit."""
-    exec_cmd = f"{get_awall_executable()} next"
+    exec_cmd = f"{get_awall_executable()} next --scheduled"
     return f"""[Unit]
 Description=awall - Free Automatic Wallpaper Engine Service
 Documentation=https://github.com/user/awall

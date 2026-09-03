@@ -12,7 +12,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-from awall.config import ALL_TOPICS, load_config, save_config
+from awall.config import ALL_TOPICS, get_config_path, load_config, save_config
 from awall.daemon import change_wallpaper
 from awall.history import HistoryManager
 from awall.wallpaper_setter import set_wallpaper
@@ -179,7 +179,7 @@ def run_tray():
         def _update_timer_display(self) -> bool:
             try:
                 # Live cross-process config synchronization (GUI <-> Tray <-> CLI)
-                config_file = Path.home() / ".config" / "awall" / "config.yaml"
+                config_file = get_config_path()
                 if config_file.exists():
                     mtime = config_file.stat().st_mtime
                     if mtime != self._last_config_mtime:

@@ -6,6 +6,7 @@ Provides full control over wallpaper rotation, favorites, configuration, and ser
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -45,11 +46,28 @@ def cmd_next(args: argparse.Namespace) -> int:
     force_topic = getattr(args, "topic", None)
     force_source = getattr(args, "source", None)
     force = getattr(args, "force", False)
+    is_scheduled = getattr(args, "scheduled", False) or bool(os.environ.get("INVOCATION_ID"))
 
-    # Check if rotation is paused
+    # 1. Master Pause Check
     if config.get("paused", False) and not force:
         print(f"{YELLOW}⏸ Wallpaper rotation is currently PAUSED. (Use 'awall next -f' to force or 'awall resume' to resume){RESET}")
         return 0
+
+    # 2. If scheduled background invocation, respect Smart Window Pause & Running Tray Watcher
+    if (is_scheduled or not sys.stdin.isatty()) and not force:
+        pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
+        if pause_on_window:
+            from awall.window_watcher import check_active_window_state
+            is_desktop, is_fullscreen = check_active_window_state()
+            if not is_desktop or is_fullscreen:
+                reason = "fullscreen application active" if is_fullscreen else "application window active"
+                print(f"[awall] Wallpaper rotation paused ({reason}). Skipping scheduled rotation.")
+                return 0
+
+        # If tray daemon is already actively running, let its event-driven SmartRotationWatcher handle rotation
+        from awall.gui.app import is_tray_running
+        if is_tray_running():
+            return 0
 
     success = change_wallpaper(
         config=config,
@@ -459,6 +477,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_next.add_argument("-t", "--topic", help="Specific topic to fetch")
     p_next.add_argument("-s", "--source", choices=["wallhaven", "bing", "unsplash", "pexels", "pixabay", "reddit", "local"], help="Force specific source")
     p_next.add_argument("-f", "--force", action="store_true", help="Force rotation even if rotation is paused")
+    p_next.add_argument("--scheduled", action="store_true", help="Invoked by automatic background scheduler")
     p_next.set_defaults(func=cmd_next)
 
     p_prev = subparsers.add_parser("prev", help="Revert to previous wallpaper in history")
