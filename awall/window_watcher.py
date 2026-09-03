@@ -1,8 +1,10 @@
 """
-Event-driven active window detection and power-saving smart rotation watcher.
-Uses native OS system triggers (X11 event spy, Wayland Hyprland/Sway IPC sockets)
-to sleep with 0% CPU / 0 wakeups while apps are active, and wakes up immediately
-to rotate wallpaper when returning to the desktop.
+Smart desktop event watcher and power-saving rotation scheduler for awall.
+Features:
+- Event-driven non-polling notification via kernel sockets and X11 _NET_ACTIVE_WINDOW spy.
+- True interval freezing: pauses the countdown timer while in applications or fullscreen gaming/videos.
+- Seamless continuation: continues counting down from the exact saved remaining time when returning to the desktop.
+- 0% CPU consumption and 0 wakeups while application windows are focused.
 """
 
 from __future__ import annotations
@@ -10,21 +12,21 @@ from __future__ import annotations
 import json
 import os
 import re
-import select
 import shutil
 import socket
 import subprocess
 import threading
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from awall.config import load_config
 from awall.daemon import change_wallpaper
 
 
-def check_is_desktop_active() -> bool:
+def check_active_window_state() -> Tuple[bool, bool]:
     """
-    Checks if the desktop is currently focused (no application focused or desktop window active).
+    Checks the current active window state.
+    Returns (is_desktop, is_fullscreen).
     """
     # 1. Hyprland (Wayland)
     if shutil.which("hyprctl") and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -32,8 +34,9 @@ def check_is_desktop_active() -> bool:
             out = subprocess.check_output(["hyprctl", "activewindow", "-j"], timeout=1).decode("utf-8")
             data = json.loads(out)
             if not data or (not data.get("class") and not data.get("title")):
-                return True
-            return False
+                return True, False
+            is_fullscreen = bool(data.get("fullscreen", False))
+            return False, is_fullscreen
         except Exception:
             pass
 
@@ -54,8 +57,9 @@ def check_is_desktop_active() -> bool:
 
             focused = find_focused(data)
             if not focused or focused.get("type") == "workspace" or not (focused.get("app_id") or focused.get("window_properties")):
-                return True
-            return False
+                return True, False
+            is_fullscreen = bool(focused.get("fullscreen_mode", 0) > 0)
+            return False, is_fullscreen
         except Exception:
             pass
 
@@ -70,14 +74,14 @@ def check_is_desktop_active() -> bool:
 
             # Check if "Show Desktop" is active
             if re.search(r"_NET_SHOWING_DESKTOP\(CARDINAL\)\s*=\s*1", root_out):
-                return True
+                return True, False
 
             match = re.search(r"_NET_ACTIVE_WINDOW.*?#\s*(0x[0-9a-fA-F]+)", root_out)
             if not match:
-                return True
+                return True, False
             wid = match.group(1)
             if wid in ("0x0", "0x00000000") or int(wid, 16) == 0:
-                return True
+                return True, False
 
             wout = subprocess.check_output(
                 ["xprop", "-id", wid, "_NET_WM_WINDOW_TYPE", "WM_CLASS", "_NET_WM_STATE"],
@@ -86,7 +90,7 @@ def check_is_desktop_active() -> bool:
             ).decode("utf-8")
 
             if "_NET_WM_WINDOW_TYPE_DESKTOP" in wout:
-                return True
+                return True, False
 
             desktop_classes = {
                 "xfdesktop",
@@ -104,11 +108,12 @@ def check_is_desktop_active() -> bool:
             wout_lower = wout.lower()
             for dc in desktop_classes:
                 if dc in wout_lower:
-                    return True
+                    return True, False
 
-            return False
+            is_fullscreen = "_NET_WM_STATE_FULLSCREEN" in wout
+            return False, is_fullscreen
         except Exception:
-            return True
+            return True, False
 
     # 4. Fallback: xdotool
     if shutil.which("xdotool"):
@@ -118,19 +123,25 @@ def check_is_desktop_active() -> bool:
                 stderr=subprocess.DEVNULL,
                 timeout=1,
             ).decode("utf-8").strip()
-            return not bool(wid_raw)
+            return (not bool(wid_raw)), False
         except Exception:
-            return True
+            return True, False
 
-    return True
+    return True, False
+
+
+def check_is_desktop_active() -> bool:
+    """Checks if the desktop is currently focused."""
+    is_desktop, _ = check_active_window_state()
+    return is_desktop
 
 
 class SmartRotationWatcher:
     """
-    Event-driven rotation watcher.
-    - Uses OS event triggers (X11 _NET_ACTIVE_WINDOW spy / Hyprland socket2 / Sway IPC)
-    - Consumes 0 CPU and 0 timer wakeups while application windows are focused.
-    - Resumes and rotates IMMEDIATELY when returning to desktop if interval expired.
+    Event-driven rotation watcher with True Interval Pausing and Resuming.
+    - Consumes 0 CPU and 0 timer wakeups while applications or fullscreen games/videos are active.
+    - Freezes the timer at its exact remaining seconds when switching to apps.
+    - Continues counting down seamlessly from the saved remaining time when returning to desktop.
     """
 
     def __init__(
@@ -141,7 +152,12 @@ class SmartRotationWatcher:
         self.on_trigger = on_trigger_callback if on_trigger_callback is not None else self._default_trigger
         self.check_desktop = desktop_check_func or check_is_desktop_active
         self.last_change_time = time.time()
+        self.remaining_seconds: float = float(self._get_interval_sec())
+        self.active_desktop_start: Optional[float] = None
+        self.is_fullscreen: bool = False
         self.was_desktop = self.check_desktop()
+        if self.was_desktop:
+            self.active_desktop_start = time.time()
         self.running = False
         self._timer: Optional[threading.Timer] = None
         self._lock = threading.Lock()
@@ -151,10 +167,28 @@ class SmartRotationWatcher:
     def _default_trigger(self):
         change_wallpaper(ignore_pause=False)
 
+    def _get_interval_sec(self) -> int:
+        config = load_config()
+        sched_cfg = config.get("schedule", {})
+        interval_min = sched_cfg.get("interval_minutes", 5)
+        return max(10, interval_min * 60)
+
+    def _get_remaining_float(self) -> float:
+        """Returns the current remaining seconds without modifying internal state."""
+        if self.was_desktop and self.active_desktop_start is not None:
+            elapsed = time.time() - self.active_desktop_start
+            return max(0.0, self.remaining_seconds - elapsed)
+        return max(0.0, self.remaining_seconds)
+
     def record_change(self):
-        """Resets the interval timer timestamp."""
+        """Resets the interval timer after a wallpaper change."""
         with self._lock:
             self.last_change_time = time.time()
+            self.remaining_seconds = float(self._get_interval_sec())
+            if self.was_desktop:
+                self.active_desktop_start = time.time()
+            else:
+                self.active_desktop_start = None
             self._arm_timer_if_needed()
 
     def update_pause_state(self):
@@ -173,7 +207,12 @@ class SmartRotationWatcher:
                 return
             self.running = True
             self.last_change_time = time.time()
+            self.remaining_seconds = float(self._get_interval_sec())
             self.was_desktop = self.check_desktop()
+            if self.was_desktop:
+                self.active_desktop_start = time.time()
+            else:
+                self.active_desktop_start = None
             self._arm_timer_if_needed()
 
         self._listener_thread = threading.Thread(target=self._event_listener_loop, daemon=True)
@@ -202,31 +241,25 @@ class SmartRotationWatcher:
                 except Exception:
                     pass
 
-    def _get_interval_sec(self) -> int:
-        config = load_config()
-        sched_cfg = config.get("schedule", {})
-        interval_min = sched_cfg.get("interval_minutes", 5)
-        return max(10, interval_min * 60)
-
     def get_remaining_time_sec(self) -> Tuple[int, bool, str]:
         """
         Returns (remaining_seconds, is_paused, display_text).
-        display_text is e.g. '04:32', '00:00', 'Paused', or 'In App'.
+        display_text is e.g. '04:32', '⏸ 03:20', or 'Paused'.
         """
         config = load_config()
         if config.get("paused", False):
             return 0, True, "Paused"
 
+        rem_float = self._get_remaining_float()
+        rem_sec = max(0, int(rem_float))
+        mins, secs = divmod(rem_sec, 60)
+
         pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
         if pause_on_window and not self.was_desktop:
-            return 0, False, "In App"
+            tag = "⏸ Fullscreen" if getattr(self, "is_fullscreen", False) else "⏸ In App"
+            return rem_sec, False, f"⏸ {mins:02d}:{secs:02d}"
 
-        interval_sec = self._get_interval_sec()
-        now = time.time()
-        elapsed = now - self.last_change_time
-        remaining = max(0, int(interval_sec - elapsed))
-        mins, secs = divmod(remaining, 60)
-        return remaining, False, f"{mins:02d}:{secs:02d}"
+        return rem_sec, False, f"{mins:02d}:{secs:02d}"
 
     def _cancel_timer(self):
         if self._timer:
@@ -245,20 +278,22 @@ class SmartRotationWatcher:
 
         pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
         if pause_on_window and not self.was_desktop:
-            # Application active -> Stay dormant, 0 wakeups!
+            # Application / Fullscreen active -> Stay dormant with frozen timer!
             return
 
-        interval_sec = self._get_interval_sec()
-        now = time.time()
-        elapsed = now - self.last_change_time
-        remaining = max(1.0, interval_sec - elapsed)
+        rem = self._get_remaining_float()
+        if rem <= 0.0:
+            self._on_timer_fired()
+            return
 
-        self._timer = threading.Timer(remaining, self._on_timer_fired)
+        self.remaining_seconds = rem
+        self.active_desktop_start = time.time()
+        self._timer = threading.Timer(max(0.5, rem), self._on_timer_fired)
         self._timer.daemon = True
         self._timer.start()
 
     def _on_timer_fired(self):
-        """Called when normal interval expires while on desktop."""
+        """Called when interval expires while on desktop."""
         with self._lock:
             if not self.running:
                 return
@@ -272,12 +307,16 @@ class SmartRotationWatcher:
 
             if is_desktop:
                 self.last_change_time = time.time()
+                self.remaining_seconds = float(self._get_interval_sec())
+                self.active_desktop_start = time.time()
                 self.was_desktop = True
                 self.on_trigger()
                 self._arm_timer_if_needed()
             else:
-                # App became active, cancel timer and wait for return to desktop
+                # App active -> mark overdue to trigger upon desktop return
                 self.was_desktop = False
+                self.remaining_seconds = 0.0
+                self.active_desktop_start = None
                 self._cancel_timer()
 
     def on_window_focus_changed(self):
@@ -290,35 +329,40 @@ class SmartRotationWatcher:
 
             config = load_config()
             if config.get("paused", False):
+                self._cancel_timer()
                 return
 
             pause_on_window = config.get("schedule", {}).get("pause_on_active_window", True)
             if not pause_on_window:
                 return
 
-            is_desktop = self.check_desktop()
+            is_desktop, is_fullscreen = check_active_window_state() if self.check_desktop == check_is_desktop_active else (self.check_desktop(), False)
+            self.is_fullscreen = is_fullscreen
 
             if not is_desktop:
-                # Switched to Application window -> Pause timer to save power
+                # Switched to Application / Fullscreen -> Freeze and hold remaining time!
                 if self.was_desktop:
+                    if self.active_desktop_start is not None:
+                        elapsed = time.time() - self.active_desktop_start
+                        self.remaining_seconds = max(0.0, self.remaining_seconds - elapsed)
+                        self.active_desktop_start = None
                     self.was_desktop = False
                     self._cancel_timer()
                 return
 
-            # Switched to Desktop!
+            # Switched back to Desktop!
             if not self.was_desktop:
                 self.was_desktop = True
-                now = time.time()
-                elapsed = now - self.last_change_time
-                interval_sec = self._get_interval_sec()
-
-                if elapsed >= interval_sec:
-                    # OVERDUE! Change wallpaper IMMEDIATELY upon returning to desktop
-                    self.last_change_time = now
+                if self.remaining_seconds <= 0.0:
+                    # OVERDUE! Rotate immediately upon returning to desktop
+                    self.last_change_time = time.time()
+                    self.remaining_seconds = float(self._get_interval_sec())
+                    self.active_desktop_start = time.time()
                     self.on_trigger()
                     self._arm_timer_if_needed()
                 else:
-                    # Interval not yet elapsed, arm timer for remaining time
+                    # Continue countdown from frozen remaining time!
+                    self.active_desktop_start = time.time()
                     self._arm_timer_if_needed()
 
     def _event_listener_loop(self):

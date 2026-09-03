@@ -55,6 +55,7 @@ class TestWindowWatcher(unittest.TestCase):
 
             # Set last change time to 10 minutes ago (interval is 5 min = 300s)
             watcher.last_change_time = time.time() - 600
+            watcher.remaining_seconds = 0.0  # Overdue
             watcher.was_desktop = False
 
             # User returns to Desktop!
@@ -86,18 +87,61 @@ class TestWindowWatcher(unittest.TestCase):
         with patch.object(watcher, "_event_listener_loop"):
             watcher.start()
 
-            # Set last change time to only 30 seconds ago
-            watcher.last_change_time = time.time() - 30
+            # 200s remaining
+            watcher.remaining_seconds = 200.0
             watcher.was_desktop = False
 
             # User returns to Desktop
             is_desktop_state[0] = True
             watcher.on_window_focus_changed()
 
-            # Should NOT trigger immediately since 30s < 300s
+            # Should NOT trigger immediately since 200s remaining
             trigger_mock.assert_not_called()
             self.assertTrue(watcher.was_desktop)
-            # Should have armed timer for remaining time
+            self.assertIsNotNone(watcher._timer)
+
+            watcher.stop()
+
+    @patch("awall.window_watcher.load_config")
+    def test_true_interval_freeze_and_resume(self, mock_cfg):
+        mock_cfg.return_value = {
+            "paused": False,
+            "schedule": {"interval_minutes": 5, "pause_on_active_window": True},
+        }
+        trigger_mock = MagicMock()
+        is_desktop_state = [True]
+
+        def get_desktop():
+            return is_desktop_state[0]
+
+        watcher = SmartRotationWatcher(
+            on_trigger_callback=trigger_mock,
+            desktop_check_func=get_desktop,
+        )
+        with patch.object(watcher, "_event_listener_loop"):
+            watcher.start()
+
+            # Initially on desktop with 300s
+            self.assertTrue(watcher.was_desktop)
+            self.assertIsNotNone(watcher._timer)
+
+            # Switch to app
+            is_desktop_state[0] = False
+            watcher.on_window_focus_changed()
+
+            # Timer cancelled and remaining time frozen
+            self.assertFalse(watcher.was_desktop)
+            self.assertIsNone(watcher._timer)
+
+            rem, is_paused, disp = watcher.get_remaining_time_sec()
+            self.assertFalse(is_paused)
+            self.assertTrue(disp.startswith("⏸"))
+
+            # Switch back to desktop
+            is_desktop_state[0] = True
+            watcher.on_window_focus_changed()
+
+            self.assertTrue(watcher.was_desktop)
             self.assertIsNotNone(watcher._timer)
 
             watcher.stop()
