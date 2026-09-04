@@ -1,185 +1,143 @@
-# 🖼 awall — Free Automatic Wallpaper Engine
+# 🌌 AuraWall — Next-Generation Linux Wallpaper Engine
 
-> A modern, lightweight, and versatile automatic wallpaper engine for Arch Linux & beyond. Pulls high-resolution photography and digital art from **Unsplash**, **Pexels**, **Pixabay**, **Reddit**, and local directories with smooth transitions, smart offline caching, and desktop integration.
+<div align="center">
 
----
+![Linux](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![GTK4](https://img.shields.io/badge/UI-GTK4%20%2F%20Libadwaita-4A90E2?logo=gnome&logoColor=white)
+![Arch Linux](https://img.shields.io/badge/Arch-Linux-1793D1?logo=arch-linux&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## ✨ Features
+**Free, smart, and dynamic desktop ambiance daemon with live countdown badges, weather-reactive art, and multi-monitor curation.**
 
-- 🌐 **Multi-Source Support**: Fetches from Unsplash, Pexels, Pixabay, Reddit (e.g. `r/wallpapers`, `r/EarthPorn`, `r/spaceporn`), and local folders.
-- ☀️ **Dynamic Solar & Weather Engine**: macOS-style dynamic lighting! Computes sun elevation (Dawn, Sunrise, Noon, Golden Hour, Sunset, Night) and syncs live weather with Open-Meteo.
-- 🖥 **Multi-Monitor Per-Display Support**: Display separate unique wallpapers on each connected monitor (eDP-1, HDMI-1, etc.) or mirror primary display.
-- 🔒 **Lock Screen Wallpaper Sync**: Automatically syncs desktop wallpaper to lock screen (XFCE, GNOME, KDE, i3lock, betterlockscreen, swaylock, hyprlock) with optional Gaussian Blur and Dim overlays.
-- 🗔 **System Tray Integration**: Full desktop tray icon (`awall tray`) with quick source/category switching, next/prev, and favorites.
-- ⚡ **Smart Power-Saving Focus Pause**: System-event triggered (0% CPU / 0 wakeups while working in apps). Automatically pauses rotation during application use and changes wallpaper immediately when returning to desktop if overdue.
-- 🚀 **Desktop Autostart**: Easy XDG login autostart for system tray & engine (`awall autostart enable`).
-- 🔄 **Intelligent Fallback Chain**: Never fails to set a wallpaper — automatically falls back to secondary sources or cached images.
-- 🏷 **17 Curated Categories**: Nature, Architecture, Animals, Space, Technology, Dark Aesthetic, Minimalist, 3D Renders, Street Photography, and more.
-- 🎨 **Visual Transitions**: Smooth crossfade blending, horizontal sliding, or instant wallpaper swaps.
-- 🖥 **Universal Desktop Support**: Auto-detects XFCE, GNOME, KDE Plasma, Hyprland, Sway, feh, nitrogen, swww, and xwallpaper.
-- ⚙️ **GTK4 / Libadwaita Preferences**: Modern settings GUI (`awall gui`) for configuring schedules, multi-monitor, lockscreen, sources, and dynamic presets.
-- ★ **Favorites System**: Save wallpapers you love (`awall fav`) — favorites are protected from cache cleanup and prioritized offline.
-- 📡 **Offline Mode**: Automatically falls back to high-resolution cached wallpapers when disconnected from the internet.
-- ⏱ **Background Automation**: Native `systemd` user timer for reliable, zero-overhead background rotation.
-- 🔔 **Desktop Notifications**: Displays photographer credit and link via `notify-send` when wallpapers change.
+[Features](#-key-features) • [Installation](#-installation) • [CLI Usage](#-cli-cheatsheet) • [Desktop Environments](#-supported-desktops) • [Contributing](#-contributing)
+
+</div>
 
 ---
 
-## 🚀 Quick One-Step Installation
+## ✨ Key Features
+
+- ⏱ **Live Digital Countdown Badge**: Pixel-perfect 24x24 square panel tray icon rendering real-time minutes & seconds (`04:32`, `04:31`...) with zero horizontal distortion.
+- ⚡ **Smart Power-Saving Window Pause**: Zero wakeups while gaming or working in applications. Automatically pauses countdown during active window/fullscreen use and resumes seamlessly when returning to the desktop.
+- ☀️ **Solar Sun & Real-Time Weather Engine**: macOS-style dynamic lighting computed from physical solar coordinates (Dawn, Sunrise, Solar Noon, Golden Hour, Sunset, Twilight, Night) combined with real-time weather conditions via Open-Meteo.
+- 🌐 **4K Ultra-HD Multi-Source Pipeline**:
+  - **Bing Wallpaper**: Curated daily UHD 4K photographic archive
+  - **Wallhaven**: Community 4K digital art, anime, and minimal illustrations
+  - **Unsplash**: High-resolution photography with aspect ratio preservation
+  - **Pexels & Pixabay**: Royalty-free artistic collections
+  - **Reddit**: Direct feeds from `r/wallpapers`, `r/EarthPorn`, `r/spaceporn`
+  - **Local Directory**: Personal offline wallpaper libraries
+- 🖥 **True Multi-Monitor Support**: Configure independent wallpapers per display (`eDP-1`, `HDMI-1`, `DP-1`) or unified desktop spanning.
+- 🔒 **Lock Screen Wallpaper Synchronization**: Automatically syncs desktop art to lock screen (`xfce4-screensaver`, `lightdm`, `gnome-screensaver`, `kscreenlocker`, `swaylock`, `hyprlock`, `betterlockscreen`) with optional Gaussian Blur and Dim overlays.
+- 🎨 **GTK4 / Libadwaita Preferences & Library**: Full visual desktop manager with cache search, thumbnail grid, 1-click apply, and granular source filters.
+- 🔄 **Intelligent Instant Fallback Chain**: Pre-fetched zero-delay wallpaper rotations with automatic offline fallback when disconnected from the internet.
+- 🚀 **Zero-Config Systemd Automation**: Background user service & timer (`aurawall.timer`) with seamless login autostart.
+
+---
+
+## 🚀 Installation
+
+### One-Step Complete Install (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/user/auto_wall.git
-cd auto_wall
+git clone https://github.com/Myselfnandha/AuraWall.git
+cd AuraWall
 
-# One-step complete install (App launcher + Icons + Tray Autostart + systemd timer)
+# Install package, desktop launcher (.desktop), tray autostart & systemd timer
 ./install.sh
 ```
 
-### Or using AUR (Arch User Repository)
+### Manual Installation via Pip
+
 ```bash
-cd auto_wall
-makepkg -si
+pip install --user .
+# Or in editable mode for development:
+pip install -e .
 ```
 
 ---
 
-## ⚡ Features & Usage
+## ⌨️ CLI Cheatsheet
 
-### 1. Launch Settings & Preferences Application
-Open **"awall Wallpaper Engine"** directly from your desktop Application Menu / App Grid, or run:
-```bash
-awall
-```
+Both `aurawall` and `awall` can be used interchangeably:
 
-### 2. Desktop System Tray Icon
-```bash
-awall tray
-```
-Right-click or click the system tray icon to switch sources, jump to the next/previous wallpaper, pause rotation, or access preferences.
-
-### 3. Startup Autorun
-Startup autorun is supported via two integrated methods:
-- **Desktop Login Autostart (XDG Autostart)**: Automatically launches the tray icon on desktop login:
-  ```bash
-  awall autostart enable
-  ```
-- **Background Systemd Timer**: Automatically rotates wallpapers on boot and on schedule without requiring the GUI:
-  ```bash
-  awall service install
-  ```
-
-### 4. Application Menu Integration
-Install or refresh desktop application shortcuts (`.desktop`) and icons in `~/.local/share/applications/`:
-```bash
-awall app install
-```
+| Command | Description |
+| :--- | :--- |
+| `aurawall` / `aurawall gui` | Launch the GTK4 / Libadwaita settings application & gallery |
+| `aurawall next` | Rotate immediately to the next wallpaper |
+| `aurawall prev` | Revert to the previous wallpaper in history |
+| `aurawall fav` | Mark the current wallpaper as a favorite |
+| `aurawall pause` | Toggle master rotation pause |
+| `aurawall resume` | Resume automatic rotation |
+| `aurawall tray` | Run the system tray icon with live countdown badge |
+| `aurawall lockscreen sync` | Manually sync current wallpaper to system lock screen |
+| `aurawall monitors` | Inspect connected display monitors and assigned modes |
+| `aurawall status` | View active source, remaining timer, and systemd service state |
+| `aurawall autostart enable` | Enable automatic tray daemon launch on desktop login |
 
 ---
 
-## ⌨️ Command Reference
+## 🖥 Supported Desktops
 
-| Action | Command |
-|---|---|
-| Launch Settings GUI | `awall` or `awall gui` |
-| Launch Desktop System Tray | `awall tray` |
-| Rotate to Next Wallpaper | `awall next` |
-| Revert to Previous Wallpaper | `awall prev` |
-| Manage Lock Screen Wallpaper Sync | `awall lockscreen [sync\|status]` |
-| Inspect Connected Displays & Multi-Monitor | `awall monitors` |
-| Manage Desktop Startup Autostart | `awall autostart [enable\|disable\|status]` |
-| Manage Desktop App Menu & Icons | `awall app [install\|uninstall\|status]` |
-| Manage Background systemd Timer | `awall service [install\|uninstall\|status]` |
-| Favorite / Unfavorite Wallpaper | `awall fav` / `awall unfav` / `awall favorites` |
-| Check Solar Position & Weather | `awall weather` |
-| Pause / Resume Rotation | `awall pause` / `awall resume` |
-| Engine Status & Info | `awall status` / `awall info` / `awall history` |
+AuraWall auto-detects your graphical session and connects directly to the native backend:
+
+- **XFCE / Xubuntu** (`xfce4-desktop`, `xfconf-query`)
+- **GNOME** (`gsettings` light & dark picture-uri)
+- **KDE Plasma 5 & 6** (DBus scripting & `kscreenlockerrc`)
+- **Hyprland** (`hyprpaper`, `swww`)
+- **Sway / Wayland** (`swaybg`)
+- **i3 / bspwm / Awesome / X11** (`feh`, `nitrogen`, `xwallpaper`)
 
 ---
 
-## 📁 Configuration (`~/.config/auto_wall/config.yaml`)
+## ⚙️ Configuration
+
+Configuration is stored in standard XDG format at `~/.config/aurawall/config.yaml`:
 
 ```yaml
 version: 1
 paused: false
-active_source: auto
-
-display:
-  scaling: fill  # fill, fit, stretch, center, tile
-  multi_monitor: per_monitor  # "unified" or "per_monitor"
-  monitor_config:
-    eDP-1:
-      mode: unique  # "unique" or "shared"
-    HDMI-1:
-      mode: unique
-  transition: fade  # fade, slide, instant
-  transition_duration_ms: 500
-  lock_screen:
-    enabled: true
-    effect: blur  # "none", "blur", "dim", "blur_dim"
-    blur_radius: 15
-    dim_opacity: 0.4
+active_source: "auto"
 
 sources:
   fallback_order:
+    - wallhaven
+    - bing
     - unsplash
     - pexels
     - pixabay
     - reddit
     - local
-  unsplash:
-    enabled: true
-    api_key: ""
-  pexels:
-    enabled: true
-    api_key: ""
-  pixabay:
-    enabled: true
-    api_key: ""
-  reddit:
-    enabled: true
-    subreddits:
-      - wallpapers
-      - EarthPorn
-      - spaceporn
-  local:
-    enabled: false
-    paths:
-      - ~/Pictures/Wallpapers
-
-topics:
-  enabled:
-    - wallpapers
-    - nature
-    - architecture
-    - space
-    - technology
-    - dark_moody
-    - minimalist
-  mode: mixed  # "mixed" or "sequential"
 
 schedule:
   interval_minutes: 5
+  pause_on_active_window: true
   on_boot: true
 
 display:
-  scaling: fill  # fill, fit, stretch, center, tile
-  transition: fade  # fade, slide, instant
-  transition_duration_ms: 500
+  scaling: "fill"
+  multi_monitor: "unified"
+  lock_screen:
+    enabled: true
+    effect: "blur_dim"
+    blur_radius: 15
+    dim_opacity: 0.4
+```
 
-cache:
-  directory: ~/.cache/auto_wall
-  max_wallpapers: 50
+---
 
-notifications:
-  enabled: true
-  show_credits: true
+## 🗑 Uninstallation
 
-wallpaper_backend: auto
+To completely remove AuraWall, including all systemd units, autostart entries, and icons:
+
+```bash
+./uninstall.sh
 ```
 
 ---
 
 ## 📜 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.

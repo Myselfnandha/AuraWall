@@ -21,15 +21,15 @@ class TestDesktop(unittest.TestCase):
         content = generate_desktop_entry_content()
         self.assertIn("[Desktop Entry]", content)
         self.assertIn("Type=Application", content)
-        self.assertIn("Name=awall Wallpaper Engine", content)
-        self.assertIn("Icon=awall", content)
+        self.assertIn("Name=AuraWall Wallpaper Engine", content)
+        self.assertIn("Icon=aurawall", content)
         self.assertIn("Actions=Next;Prev;Tray;Settings;Pause;Resume;", content)
 
     def test_desktop_app_lifecycle(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             app_dir = Path(tmpdir) / "applications"
             app_dir.mkdir(parents=True, exist_ok=True)
-            desktop_file = app_dir / "io.github.awall.desktop"
+            desktop_file = app_dir / "io.github.aurawall.desktop"
             icons_dir = Path(tmpdir) / "icons" / "hicolor"
             pixmaps_dir = Path(tmpdir) / "pixmaps"
 

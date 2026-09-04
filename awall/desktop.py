@@ -21,8 +21,8 @@ def get_applications_dir() -> Path:
 
 
 def get_desktop_file() -> Path:
-    """Returns path to io.github.awall.desktop."""
-    return get_applications_dir() / "io.github.awall.desktop"
+    """Returns path to io.github.aurawall.desktop."""
+    return get_applications_dir() / "io.github.aurawall.desktop"
 
 
 def get_icons_base_dir() -> Path:
@@ -40,28 +40,29 @@ def get_pixmaps_dir() -> Path:
 
 
 def get_awall_exec() -> str:
-    """Finds command to launch awall."""
-    which_awall = shutil.which("awall")
-    if which_awall:
-        return which_awall
+    """Finds command to launch aurawall / awall."""
+    for cmd in ("aurawall", "awall"):
+        which = shutil.which(cmd)
+        if which:
+            return which
     return f"{sys.executable} -m awall"
 
 
 def generate_desktop_entry_content() -> str:
-    """Generates standard XDG .desktop application launcher content."""
+    """Generates standard XDG .desktop application launcher content for AuraWall."""
     exec_cmd = get_awall_exec()
     return f"""[Desktop Entry]
 Type=Application
-Name=awall Wallpaper Engine
-GenericName=Wallpaper Engine
-Comment=Free Automatic Wallpaper Engine with multi-source fallback and dynamic solar lighting
-Exec={exec_cmd}
-Icon=awall
+Name=AuraWall Wallpaper Engine
+GenericName=Dynamic Wallpaper Engine
+Comment=Next-generation wallpaper engine & desktop ambiance daemon for Linux
+Exec={exec_cmd} gui
+Icon=aurawall
 Terminal=false
 Categories=Utility;DesktopSettings;Settings;Graphics;
-Keywords=wallpaper;background;unsplash;pexels;reddit;engine;wallpapers;
+Keywords=wallpaper;background;unsplash;wallhaven;bing;engine;wallpapers;aurawall;
 StartupNotify=true
-StartupWMClass=io.github.awall.settings
+StartupWMClass=io.github.aurawall
 Actions=Next;Prev;Tray;Settings;Pause;Resume;
 
 [Desktop Action Next]
@@ -93,32 +94,41 @@ Exec={exec_cmd} resume
 def install_desktop_app() -> bool:
     """
     Installs the desktop application launcher and icons to user directories:
-    - ~/.local/share/applications/io.github.awall.desktop
-    - ~/.local/share/icons/hicolor/{32x32,64x64,128x128,256x256}/apps/awall.png
-    - ~/.local/share/pixmaps/awall.png
+    - ~/.local/share/applications/io.github.aurawall.desktop
+    - ~/.local/share/icons/hicolor/{32x32,64x64,128x128,256x256}/apps/{aurawall,awall}.png
+    - ~/.local/share/pixmaps/{aurawall,awall}.png
     """
     try:
         # 1. Install .desktop file
         app_file = get_desktop_file()
         app_file.write_text(generate_desktop_entry_content(), encoding="utf-8")
-        
-        # Clean up any legacy awall.desktop duplicate file
-        alt_app_file = get_applications_dir() / "awall.desktop"
-        if alt_app_file.exists():
-            alt_app_file.unlink()
 
-        # 2. Install application icons
+        # Clean up any legacy .desktop files
+        for old_file in ("io.github.awall.desktop", "awall.desktop"):
+            old_p = get_applications_dir() / old_file
+            if old_p.exists():
+                try:
+                    old_p.unlink()
+                except Exception:
+                    pass
+
+        # 2. Install application icons (both aurawall and awall for full compatibility)
         assets_dir = Path(__file__).parent / "assets"
         if assets_dir.exists():
             icon_map = [
+                ("icon-32.png", "32x32", "aurawall.png"),
                 ("icon-32.png", "32x32", "awall.png"),
+                ("icon-64.png", "64x64", "aurawall.png"),
                 ("icon-64.png", "64x64", "awall.png"),
+                ("icon-128.png", "128x128", "aurawall.png"),
                 ("icon-128.png", "128x128", "awall.png"),
+                ("icon.png", "256x256", "aurawall.png"),
                 ("icon.png", "256x256", "awall.png"),
+                ("icon.png", "512x512", "aurawall.png"),
                 ("icon.png", "512x512", "awall.png"),
                 ("tray-icon.png", "24x24", "tray-icon.png"),
+                ("tray-icon.png", "24x24", "aurawall-tray.png"),
                 ("tray-icon.png", "24x24", "awall-tray.png"),
-                ("tray-icon.png", "24x24", "awall.png"),
             ]
             for src_name, size, dest_name in icon_map:
                 src_path = assets_dir / src_name
@@ -135,8 +145,10 @@ def install_desktop_app() -> bool:
                 if src_p.exists():
                     shutil.copy2(src_p, pix_dir / name)
             if (assets_dir / "icon.png").exists():
+                shutil.copy2(assets_dir / "icon.png", pix_dir / "aurawall.png")
                 shutil.copy2(assets_dir / "icon.png", pix_dir / "awall.png")
             if (assets_dir / "tray-icon.png").exists():
+                shutil.copy2(assets_dir / "tray-icon.png", pix_dir / "aurawall-tray.png")
                 shutil.copy2(assets_dir / "tray-icon.png", pix_dir / "awall-tray.png")
 
         # 3. Update desktop and icon databases if available

@@ -21,19 +21,20 @@ def get_systemd_user_dir() -> Path:
 
 
 def get_awall_executable() -> str:
-    """Finds the absolute command to execute awall."""
-    which_awall = shutil.which("awall")
-    if which_awall:
-        return which_awall
+    """Finds the absolute command to execute aurawall / awall."""
+    for cmd in ("aurawall", "awall"):
+        which = shutil.which(cmd)
+        if which:
+            return which
     return f"{sys.executable} -m awall"
 
 
 def generate_service_content() -> str:
-    """Generates the systemd user service unit."""
+    """Generates the systemd user service unit for AuraWall."""
     exec_cmd = f"{get_awall_executable()} next --scheduled"
     return f"""[Unit]
-Description=awall - Free Automatic Wallpaper Engine Service
-Documentation=https://github.com/user/awall
+Description=AuraWall - Next-generation Wallpaper Engine Service
+Documentation=https://github.com/Myselfnandha/AuraWall
 After=graphical-session.target network-online.target
 Wants=network-online.target
 
@@ -49,12 +50,12 @@ WantedBy=graphical-session.target
 
 
 def generate_timer_content(interval_minutes: int = 5, on_boot: bool = True) -> str:
-    """Generates the systemd user timer unit."""
+    """Generates the systemd user timer unit for AuraWall."""
     boot_sec = "30s" if on_boot else "2min"
     return f"""[Unit]
-Description=awall - Free Automatic Wallpaper Engine Timer
-Documentation=https://github.com/user/awall
-PartOf=awall.service
+Description=AuraWall - Next-generation Wallpaper Engine Timer
+Documentation=https://github.com/Myselfnandha/AuraWall
+PartOf=aurawall.service
 
 [Timer]
 OnBootSec={boot_sec}
@@ -67,22 +68,32 @@ WantedBy=timers.target
 
 
 class ServiceManager:
-    """Controls the installation, lifecycle, and status of awall's systemd timer."""
+    """Controls the installation, lifecycle, and status of AuraWall's systemd timer."""
 
     def __init__(self):
         self.user_dir = get_systemd_user_dir()
-        self.service_file = self.user_dir / "awall.service"
-        self.timer_file = self.user_dir / "awall.timer"
+        self.service_file = self.user_dir / "aurawall.service"
+        self.timer_file = self.user_dir / "aurawall.timer"
 
     def install(self, interval_minutes: int = 5, on_boot: bool = True) -> bool:
         """Installs and enables the systemd service and timer."""
         try:
+            # Clean up any legacy awall units
+            for legacy_unit in ("awall.timer", "awall.service"):
+                legacy_p = self.user_dir / legacy_unit
+                if legacy_p.exists():
+                    try:
+                        subprocess.run(["systemctl", "--user", "disable", "--now", legacy_unit], check=False, stderr=subprocess.DEVNULL)
+                        legacy_p.unlink()
+                    except Exception:
+                        pass
+
             self.service_file.write_text(generate_service_content(), encoding="utf-8")
             self.timer_file.write_text(generate_timer_content(interval_minutes, on_boot), encoding="utf-8")
 
             # Reload systemd user daemon
             subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
-            subprocess.run(["systemctl", "--user", "enable", "--now", "awall.timer"], check=True)
+            subprocess.run(["systemctl", "--user", "enable", "--now", "aurawall.timer"], check=True)
             print(f"[awall] systemd timer successfully installed and activated (interval: {interval_minutes}m).")
             return True
         except Exception as e:
@@ -92,13 +103,14 @@ class ServiceManager:
     def uninstall(self) -> bool:
         """Stops, disables, and removes the systemd units."""
         try:
-            subprocess.run(["systemctl", "--user", "disable", "--now", "awall.timer"], check=False)
-            subprocess.run(["systemctl", "--user", "stop", "awall.service"], check=False)
+            for unit in ("aurawall.timer", "awall.timer"):
+                subprocess.run(["systemctl", "--user", "disable", "--now", unit], check=False, stderr=subprocess.DEVNULL)
+            for unit in ("aurawall.service", "awall.service"):
+                subprocess.run(["systemctl", "--user", "stop", unit], check=False, stderr=subprocess.DEVNULL)
 
-            if self.service_file.exists():
-                self.service_file.unlink()
-            if self.timer_file.exists():
-                self.timer_file.unlink()
+            for f in (self.service_file, self.timer_file, self.user_dir / "awall.service", self.user_dir / "awall.timer"):
+                if f.exists():
+                    f.unlink()
 
             subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
             print("[awall] systemd service & timer successfully uninstalled.")
@@ -115,15 +127,23 @@ class ServiceManager:
 
         try:
             res_act = subprocess.run(
-                ["systemctl", "--user", "is-active", "awall.timer"],
+                ["systemctl", "--user", "is-active", "aurawall.timer"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 text=True,
             )
             timer_active = res_act.stdout.strip() == "active"
+            if not timer_active:
+                res_act_legacy = subprocess.run(
+                    ["systemctl", "--user", "is-active", "awall.timer"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                )
+                timer_active = res_act_legacy.stdout.strip() == "active"
 
             res_enb = subprocess.run(
-                ["systemctl", "--user", "is-enabled", "awall.timer"],
+                ["systemctl", "--user", "is-enabled", "aurawall.timer"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 text=True,

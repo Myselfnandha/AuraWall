@@ -9,11 +9,11 @@ from awall.gui import is_gui_available
 
 
 def is_tray_running() -> bool:
-    """Checks if the awall tray process is currently active."""
+    """Checks if the aurawall tray process is currently active."""
     try:
         import os, subprocess
         my_pid = os.getpid()
-        out = subprocess.check_output(["pgrep", "-f", "awall.*tray"]).decode("utf-8")
+        out = subprocess.check_output(["pgrep", "-f", "tray"]).decode("utf-8")
         pids = [int(p.strip()) for p in out.strip().split() if p.strip() and int(p.strip()) != my_pid]
         return len(pids) > 0
     except Exception:
@@ -21,14 +21,15 @@ def is_tray_running() -> bool:
 
 
 def ensure_tray_running():
-    """Spawns the awall tray process in the background if not already running."""
+    """Spawns the aurawall tray process in the background if not already running."""
     if not is_tray_running():
         try:
-            import os, subprocess, sys
+            import os, subprocess, sys, shutil
             env = os.environ.copy()
             if "DISPLAY" not in env:
                 env["DISPLAY"] = ":0.0"
-            cmd = [sys.executable, "-m", "awall", "tray"]
+            tray_bin = shutil.which("aurawall") or shutil.which("awall")
+            cmd = [tray_bin, "tray"] if tray_bin else [sys.executable, "-m", "awall", "tray"]
             subprocess.Popen(
                 cmd,
                 env=env,
@@ -37,13 +38,13 @@ def ensure_tray_running():
                 start_new_session=True,
             )
         except Exception as e:
-            print(f"[awall] Notice: Could not autostart tray ({e})")
+            print(f"[aurawall] Notice: Could not autostart tray ({e})")
 
 
 def launch_gui(argv=None) -> int:
     """Launches the GTK4/Libadwaita graphical configuration window."""
     if not is_gui_available():
-        print("[awall] GTK4 or Libadwaita is not installed.")
+        print("[aurawall] GTK4 or Libadwaita is not installed.")
         print("Please install 'python-gobject', 'gtk4', and 'libadwaita' to launch the application.")
         return 1
 
@@ -56,18 +57,18 @@ def launch_gui(argv=None) -> int:
     from gi.repository import Adw, Gio
     from awall.gui.main_window import MainWindow
 
-    class AwallApplication(Adw.Application):
+    class AuraWallApplication(Adw.Application):
         def __init__(self):
             super().__init__(
-                application_id="io.github.awall.settings",
+                application_id="io.github.aurawall",
                 flags=Gio.ApplicationFlags.NON_UNIQUE,
             )
 
         def do_activate(self):
             win = MainWindow(self)
-            win.set_icon_name("awall")
+            win.set_icon_name("aurawall")
             win.present()
 
-    app = AwallApplication()
+    app = AuraWallApplication()
     args = [sys.argv[0]] if argv is None else [sys.argv[0]] + list(argv)
     return app.run(args)

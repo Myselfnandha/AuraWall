@@ -24,7 +24,7 @@ class MainWindow(Adw.PreferencesWindow):
 
     def __init__(self, app: Adw.Application):
         super().__init__(application=app)
-        self.set_title("awall Wallpaper Engine")
+        self.set_title("AuraWall Wallpaper Engine")
         self.set_default_size(920, 760)
 
         # Ensure titlebar displays minimize, maximize/restore, and close buttons on the top right

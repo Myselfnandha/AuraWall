@@ -114,7 +114,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         },
     },
     "cache": {
-        "directory": "~/.cache/auto_wall",
+        "directory": "~/.cache/aurawall",
         "max_wallpapers": 50,
     },
     "notifications": {
@@ -123,8 +123,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "dynamic": {
         "enabled": True,
-        "use_weather": True,
-        "use_solar": True,
+        "mode": "solar",  # "solar", "weather", "dynamic_pack"
         "latitude": None,
         "longitude": None,
         "city": "",
@@ -135,14 +134,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 
 def get_config_dir() -> Path:
-    """Returns the config directory path ($XDG_CONFIG_HOME/auto_wall or ~/.config/auto_wall)."""
-    xdg_config = os.environ.get("XDG_CONFIG_HOME")
-    if xdg_config:
-        path = Path(xdg_config) / "auto_wall"
-    else:
-        path = Path.home() / ".config" / "auto_wall"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    """Returns the config directory path ($XDG_CONFIG_HOME/aurawall or ~/.config/aurawall)."""
+    base = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
+    primary = base / "aurawall"
+    legacy = base / "auto_wall"
+    if not primary.exists() and legacy.exists():
+        try:
+            shutil.copytree(legacy, primary)
+        except Exception:
+            return legacy
+    primary.mkdir(parents=True, exist_ok=True)
+    return primary
 
 
 def get_config_path() -> Path:
@@ -151,14 +153,17 @@ def get_config_path() -> Path:
 
 
 def get_cache_dir() -> Path:
-    """Returns the cache directory path ($XDG_CACHE_HOME/auto_wall or ~/.cache/auto_wall)."""
-    xdg_cache = os.environ.get("XDG_CACHE_HOME")
-    if xdg_cache:
-        path = Path(xdg_cache) / "auto_wall"
-    else:
-        path = Path.home() / ".cache" / "auto_wall"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    """Returns the cache directory path ($XDG_CACHE_HOME/aurawall or ~/.cache/aurawall)."""
+    base = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache"))
+    primary = base / "aurawall"
+    legacy = base / "auto_wall"
+    if not primary.exists() and legacy.exists():
+        try:
+            shutil.copytree(legacy, primary)
+        except Exception:
+            return legacy
+    primary.mkdir(parents=True, exist_ok=True)
+    return primary
 
 
 def get_default_config() -> Dict[str, Any]:

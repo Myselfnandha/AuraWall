@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# awall - Free Automatic Wallpaper Engine Installation Script
+# AuraWall - Next-generation Wallpaper Engine Installation Script
 # Installs application, desktop launcher, icons, systemd timer, and login autostart
 # ==============================================================================
 
@@ -14,11 +14,11 @@ YELLOW="\033[93m"
 RESET="\033[0m"
 
 echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${CYAN}${BOLD}║   🖼  Installing awall Wallpaper Engine Desktop Application    ║${RESET}"
+echo -e "${CYAN}${BOLD}║  🌌 Installing AuraWall Wallpaper Engine Desktop Application ║${RESET}"
 echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════════════════════╝${RESET}\n"
 
 # 1. Install python package
-echo -e "${BLUE}▶ Installing awall package to user environment...${RESET}"
+echo -e "${BLUE}▶ Installing AuraWall package to user environment...${RESET}"
 if pip install --user . --no-warn-script-location 2>/dev/null; then
     echo -e "${GREEN}✓ Package installed successfully.${RESET}"
 elif pip install --user . --break-system-packages --no-warn-script-location; then
@@ -46,6 +46,6 @@ echo -e "${BLUE}▶ Installing and activating background systemd timer...${RESET
 python3 -c "from awall.service import ServiceManager; ServiceManager().install(interval_minutes=5, on_boot=True)"
 
 echo -e "\n${GREEN}${BOLD}✓ Installation Complete! 🎉${RESET}"
-echo -e "  • ${BOLD}Application Launcher:${RESET} Available in your desktop application menu / App Grid"
+echo -e "  • ${BOLD}Application Launcher:${RESET} Available in your desktop application menu / App Grid (AuraWall)"
 echo -e "  • ${BOLD}Startup Autorun:${RESET} Enabled automatically on login and boot"
-echo -e "  • ${BOLD}Launch Settings GUI:${RESET} Run '${CYAN}awall${RESET}' or open 'awall Wallpaper Engine' from menu\n"
+echo -e "  • ${BOLD}Launch Commands:${RESET} Run '${CYAN}aurawall${RESET}' or '${CYAN}awall${RESET}' to open GUI / CLI\n"
